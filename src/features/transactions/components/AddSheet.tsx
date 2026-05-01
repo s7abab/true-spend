@@ -175,6 +175,7 @@ type AddSheetProps = {
   deleting?: boolean;
   currency?: string;
   saving?: boolean;
+  asPage?: boolean;
 };
 
 export function AddSheet({
@@ -188,6 +189,7 @@ export function AddSheet({
   deleting = false,
   currency = 'INR',
   saving = false,
+  asPage = false,
 }: AddSheetProps) {
   const isEdit = Boolean(initialTxn);
   const [kind, setKind] = useState<TransactionKind>(() =>
@@ -212,9 +214,10 @@ export function AddSheet({
   const catBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   useEffect(() => {
+    if (asPage) return;
     document.documentElement.style.overflow = 'hidden';
     return () => { document.documentElement.style.overflow = ''; };
-  }, []);
+  }, [asPage]);
 
   // Scroll selected category into view whenever it changes
   useEffect(() => {
@@ -293,28 +296,30 @@ export function AddSheet({
 
   return (
     <motion.div
-      className="overlay add-sheet-overlay"
-      initial={{ opacity: 0 }}
+      className={`overlay add-sheet-overlay${asPage ? ' add-page-overlay' : ''}`}
+      style={asPage ? { minHeight: '100%', height: '100%' } : undefined}
+      initial={asPage ? { opacity: 1 } : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={asPage ? { opacity: 1 } : { opacity: 0 }}
       transition={{ duration: 0.22 }}
-      onClick={(e) => e.target === e.currentTarget && !busy && onClose()}
+      onClick={(e) => !asPage && e.target === e.currentTarget && !busy && onClose()}
     >
       <motion.div
-        className="sheet"
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
+        className={`sheet${asPage ? ' add-page-sheet' : ''}`}
+        style={asPage ? { minHeight: '100%', height: '100%' } : undefined}
+        initial={asPage ? { opacity: 1 } : { y: '100%' }}
+        animate={asPage ? { opacity: 1 } : { y: 0 }}
+        exit={asPage ? { opacity: 1 } : { y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 340 }}
         // Swipe-to-dismiss: drag down past 120px or fast flick closes the sheet
-        drag={busy ? false : 'y'}
+        drag={asPage || busy ? false : 'y'}
         dragConstraints={{ top: 0 }}
         dragElastic={{ top: 0, bottom: 0.4 }}
         onDragEnd={(_, info) => {
-          if (!busy && (info.offset.y > 120 || info.velocity.y > 500)) onClose();
+          if (!asPage && !busy && (info.offset.y > 120 || info.velocity.y > 500)) onClose();
         }}
       >
-        <div className="sheet-handle" />
+        {!asPage && <div className="sheet-handle" />}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 0' }}>
           <button

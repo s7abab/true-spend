@@ -314,6 +314,25 @@ function AuthedApp({ user }: { user: User | null }) {
     ),
   }[tab];
 
+  const mainContent = adding ? (
+    <AddSheet
+      key={editingTxn?.id ?? 'add-page'}
+      accent={ACCENT}
+      categoriesExpense={catsExpense}
+      categoriesIncome={catsIncome}
+      currency={currency}
+      saving={savingTxn}
+      deleting={deletingTxn}
+      initialTxn={editingTxn}
+      onDelete={editingTxn ? () => void onDeleteTxn() : undefined}
+      onClose={closeTxnSheet}
+      onSave={onSaveTxn}
+      asPage
+    />
+  ) : (
+    screen
+  );
+
   // Categories is a sub-screen of Profile — highlight Profile tab and show a back button
   const effectiveActiveTab: TabId = tab === 'categories' ? 'profile' : tab;
 
@@ -355,7 +374,7 @@ function AuthedApp({ user }: { user: User | null }) {
 
   return (
     <div className="app-shell">
-      <div className="page-scroll">
+      <div className={`page-scroll${adding ? ' page-scroll--no-nav' : ''}`}>
         {!adding && (
           <AppTopBar onProfile={() => setTab('profile')} profile={profile} user={user}>
             {topBarContent}
@@ -365,7 +384,7 @@ function AuthedApp({ user }: { user: User | null }) {
         <div className="app-main">
           <AnimatePresence mode="wait">
             <motion.div
-              key={tab}
+              key={adding ? `add-${editingTxn?.id ?? 'new'}` : tab}
               initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -8 }}
@@ -379,7 +398,7 @@ function AuthedApp({ user }: { user: User | null }) {
                 WebkitOverflowScrolling: 'touch',
               }}
             >
-              {screen}
+              {mainContent}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -424,24 +443,6 @@ function AuthedApp({ user }: { user: User | null }) {
           })}
         </nav>
       )}
-
-      <AnimatePresence>
-        {adding && (
-          <AddSheet
-            key={editingTxn?.id ?? 'add-sheet'}
-            accent={ACCENT}
-            categoriesExpense={catsExpense}
-            categoriesIncome={catsIncome}
-            currency={currency}
-            saving={savingTxn}
-            deleting={deletingTxn}
-            initialTxn={editingTxn}
-            onDelete={editingTxn ? () => void onDeleteTxn() : undefined}
-            onClose={closeTxnSheet}
-            onSave={onSaveTxn}
-          />
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {toast ? <Toast key={toast.id} toast={toast} accent={ACCENT} currency={currency} /> : null}
