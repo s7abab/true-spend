@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useMemo } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import * as transactionsApi from '@/features/transactions/api/transactions';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import { mapTxnRow, type DbTransactionRow, type MappedTxn } from '@/utils/txnMap';
 import type { HistoryKindFilter } from '@/features/history/types';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 const PAGE_SIZE = 50;
 
@@ -12,93 +14,56 @@ function aborted(err: unknown): boolean {
   return Boolean(/aborted|AbortError/i.test(e.message || '') || e.name === 'AbortError');
 }
 
-export function useHistoryTransactions(
-  filter: HistoryKindFilter,
-  debouncedSearch: string,
-  refreshKey = 0,
-) {
+export function useHistoryTransactions(filter: HistoryKindFilter, debouncedSearch: string) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const [rows, setRows] = useState<MappedTxn[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const rowsRef = useRef<MappedTxn[]>([]);
 
   const kind = filter === 'all' ? 'all' : filter;
   const search = debouncedSearch?.trim() ?? '';
 
-  rowsRef.current = rows;
-
-  const resetAndLoad = useCallback(
-    async (signal: AbortSignal | undefined) => {
-      if (!userId) {
-        setRows([]);
-        setHasMore(false);
-        setError(null);
-        return;
+  const q = useInfiniteQuery({
+    queryKey: userId ? queryKeys.transactions.history(userId, kind, search) : ['transactions', 'history', 'idle'],
+    initialPageParam: null as transactionsApi.TxnPageCursor,
+    enabled: Boolean(userId),
+    queryFn: async ({ pageParam, signal }) => {
+      const { data, error: err } = await transactionsApi.fetchTransactionsPage({
+        kind,
+        search,
+        cursor: pageParam,
+        limit: PAGE_SIZE,
+        signal,
+      });
+      if (err && aborted(err)) return [];
+      if (err) {
+        console.error('history page failed', err);
+        throw new Error(err.message || 'Could not load history');
       }
-      setLoading(true);
-      setHasMore(true);
-      setError(null);
-      try {
-        const { data, error: err } = await transactionsApi.fetchTransactionsPage({
-          kind,
-          search,
-          cursor: null,
-          limit: PAGE_SIZE,
-          signal,
-        });
-        if (signal?.aborted) return;
-        if (err && !aborted(err)) {
-          console.error('history page failed', err);
-          setRows([]);
-          setHasMore(false);
-          setError(err.message || 'Could not load history');
-        } else if (!err) {
-          const mapped = ((data as DbTransactionRow[]) || []).map((r) => mapTxnRow(r));
-          setRows(mapped);
-          setHasMore(((data as unknown[]) || []).length === PAGE_SIZE);
-          setError(null);
-        }
-      } finally {
-        setLoading(false);
-      }
+      const rows = ((data as DbTransactionRow[]) || []).map((r) => mapTxnRow(r));
+      return rows;
     },
-    [userId, kind, search],
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.length || lastPage.length < PAGE_SIZE) return undefined;
+      const last = lastPage[lastPage.length - 1]!;
+      if (!last.occurred_at || !last.id) return undefined;
+      return { occurred_at: last.occurred_at, id: last.id };
+    },
+  });
+
+  const rows: MappedTxn[] = useMemo(
+    () => (q.data?.pages ?? []).flatMap((p) => p),
+    [q.data?.pages],
   );
 
-  useEffect(() => {
-    const ac = new AbortController();
-    void resetAndLoad(ac.signal);
-    return () => ac.abort();
-  }, [resetAndLoad, refreshKey]);
+  const errorMsg =
+    q.error instanceof Error ? q.error.message : q.error ? String(q.error) : null;
 
-  const loadMore = useCallback(async () => {
-    if (!userId || loadingMore || !hasMore) return;
-    const prev = rowsRef.current;
-    if (!prev.length) return;
-    const last = prev[prev.length - 1];
-    if (!last?.occurred_at || !last?.id) return;
-    setLoadingMore(true);
-    const { data, error: err } = await transactionsApi.fetchTransactionsPage({
-      kind,
-      search,
-      cursor: { occurred_at: last.occurred_at, id: last.id },
-      limit: PAGE_SIZE,
-    });
-    if (err) {
-      console.error('history loadMore failed', err);
-      setError(err.message || 'Could not load more');
-    } else {
-      const chunk = ((data as DbTransactionRow[]) || []).map((r) => mapTxnRow(r));
-      setRows((p) => [...p, ...chunk]);
-      setHasMore(((data as unknown[]) || []).length === PAGE_SIZE);
-      setError(null);
-    }
-    setLoadingMore(false);
-  }, [userId, kind, search, loadingMore, hasMore]);
-
-  return { rows, loading, loadingMore, hasMore, error, loadMore, refetch: resetAndLoad };
+  return {
+    rows,
+    loading: q.isPending,
+    loadingMore: q.isFetchingNextPage,
+    hasMore: Boolean(q.hasNextPage),
+    error: errorMsg,
+    loadMore: () => void q.fetchNextPage(),
+    refetch: q.refetch,
+  };
 }

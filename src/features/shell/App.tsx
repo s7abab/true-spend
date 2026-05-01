@@ -125,14 +125,8 @@ function AuthedApp({ user }: { user: User | null }) {
     error: categoriesError,
     refetch: refetchCategories,
   } = useCategories();
-  const {
-    home,
-    addTransaction,
-    exportAllTransactions,
-    mutationGeneration,
-    error: txnsError,
-    refetch: refetchTransactions,
-  } = useTransactions();
+  const { home, addTransaction, exportAllTransactions, error: txnsError, refetch: refetchTransactions } =
+    useTransactions();
   const currency = profile?.currency || 'INR';
 
   const [tab, setTab] = useState<TabId>('home');
@@ -223,8 +217,8 @@ function AuthedApp({ user }: { user: User | null }) {
         onSeeAll={() => setTab('history')}
       />
     ),
-    stats: <StatsScreen categoriesExpense={catsExpense} currency={currency} refreshKey={mutationGeneration} />,
-    history: <HistoryScreen resolveCat={resolveCat} currency={currency} refreshKey={mutationGeneration} />,
+    stats: <StatsScreen categoriesExpense={catsExpense} currency={currency} />,
+    history: <HistoryScreen resolveCat={resolveCat} currency={currency} />,
     categories: (
       <CategoriesScreen
         accent={ACCENT}

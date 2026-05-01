@@ -38,10 +38,9 @@ function TxnRow({ txn, resolveCat, currency }: { txn: MappedTxn; resolveCat: Res
 type HistoryScreenProps = {
   resolveCat: ResolveCat;
   currency?: string;
-  refreshKey?: number;
 };
 
-export function HistoryScreen({ resolveCat, currency = 'INR', refreshKey = 0 }: HistoryScreenProps) {
+export function HistoryScreen({ resolveCat, currency = 'INR' }: HistoryScreenProps) {
   const [filter, setFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -51,11 +50,7 @@ export function HistoryScreen({ resolveCat, currency = 'INR', refreshKey = 0 }: 
     return () => clearTimeout(t);
   }, [search]);
 
-  const { rows, loading, loadingMore, hasMore, error, loadMore } = useHistoryTransactions(
-    filter,
-    debouncedSearch,
-    refreshKey,
-  );
+  const { rows, loading, loadingMore, hasMore, error, loadMore } = useHistoryTransactions(filter, debouncedSearch);
 
   const groups = useMemo(() => groupTxnsByDay(rows), [rows]);
 

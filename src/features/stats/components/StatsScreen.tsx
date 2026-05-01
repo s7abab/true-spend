@@ -15,15 +15,14 @@ const PERIODS: { id: PeriodId; label: string }[] = [
 type StatsScreenProps = {
   categoriesExpense: CategoryRow[];
   currency?: string;
-  refreshKey?: number;
 };
 
-export function StatsScreen({ categoriesExpense, currency = 'INR', refreshKey = 0 }: StatsScreenProps) {
+export function StatsScreen({ categoriesExpense, currency = 'INR' }: StatsScreenProps) {
   const [period, setPeriod] = useState<PeriodId>('monthly');
   const [offset, setOffset] = useState(0);
 
   const info = useMemo(() => getPeriodWindow(period, offset), [period, offset]);
-  const { loading, aggRows, error: statsError } = useStatsAggregates(period, offset, refreshKey);
+  const { loading, aggRows, error: statsError } = useStatsAggregates(period, offset);
 
   const { totalSpent, sorted } = useMemo(() => {
     const total = aggRows.reduce((a, r) => a + Number(r.total), 0);

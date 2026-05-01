@@ -1,58 +1,42 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import type { User } from '@supabase/supabase-js';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as profilesApi from '@/features/profile/api/profiles';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import { resolveAvatarUrl } from '@/utils/avatar';
 import type { ProfileRow } from '@/features/profile/types';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
-function errMessage(e: unknown): string {
-  if (!e) return 'Something went wrong';
-  if (typeof e === 'object' && e !== null && 'message' in e && typeof (e as Error).message === 'string' && (e as Error).message) {
-    return (e as Error).message;
+async function fetchOrCreateProfile(userId: string, user: User): Promise<ProfileRow> {
+  const first = await profilesApi.fetchProfile(userId);
+  if (first.error) throw first.error;
+  let data = first.data as ProfileRow | null;
+  if (!data) {
+    const row = profilesApi.profileRowFromUser(user);
+    if (row) {
+      const ins = await profilesApi.insertProfile(row);
+      if (ins.error) console.warn('profile bootstrap insert', ins.error);
+    }
+    const again = await profilesApi.fetchProfile(userId);
+    if (again.error) throw again.error;
+    data = again.data as ProfileRow | null;
   }
-  return String(e);
+  if (!data) throw new Error('Profile could not be loaded');
+  return data;
 }
 
 export function useProfile() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<ProfileRow | null>(null);
-  const [loading, setLoading] = useState(Boolean(user));
-  const [error, setError] = useState<string | null>(null);
+  const userId = user?.id ?? null;
+  const qc = useQueryClient();
 
-  const load = useCallback(async () => {
-    if (!user?.id) {
-      setProfile(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      let { data, error: qErr } = await profilesApi.fetchProfile(user.id);
-      if (qErr) throw qErr;
-      if (!data) {
-        const row = profilesApi.profileRowFromUser(user);
-        if (row) {
-          const ins = await profilesApi.insertProfile(row);
-          if (ins.error) console.warn('profile bootstrap insert', ins.error);
-        }
-        const again = await profilesApi.fetchProfile(user.id);
-        if (again.error) throw again.error;
-        data = again.data as ProfileRow | null;
-      }
-      setProfile(data as ProfileRow);
-    } catch (e) {
-      console.error('profile load', e);
-      setProfile(null);
-      setError(errMessage(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+  const profileQuery = useQuery({
+    queryKey: userId ? queryKeys.profile(userId) : ['profile', 'idle'],
+    enabled: Boolean(userId) && Boolean(user),
+    queryFn: () => fetchOrCreateProfile(userId!, user!),
+  });
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const profile = profileQuery.data ?? null;
 
   useEffect(() => {
     if (!user?.id || !profile?.id) return;
@@ -62,22 +46,49 @@ export function useProfile() {
     let cancelled = false;
     void profilesApi.updateProfile(user.id, { avatar_url: url }).then(({ data, error: upErr }) => {
       if (cancelled || upErr || !data) return;
-      setProfile(data as ProfileRow);
+      qc.setQueryData(queryKeys.profile(user.id), data as ProfileRow);
     });
     return () => {
       cancelled = true;
     };
-  }, [user, profile?.id, profile?.avatar_url]);
+  }, [user, profile?.id, profile?.avatar_url, qc]);
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ uid, patch }: { uid: string; patch: Partial<ProfileRow> }) => {
+      const out = await profilesApi.updateProfile(uid, patch);
+      if (out.error) throw out.error;
+      return out.data as ProfileRow;
+    },
+    onSuccess: (data, { uid }) => {
+      qc.setQueryData(queryKeys.profile(uid), data);
+    },
+  });
 
   const updateProfile = useCallback(
     async (patch: Partial<ProfileRow>) => {
       if (!user) return { error: new Error('not signed in') as Error, data: null };
-      const { data, error: upErr } = await profilesApi.updateProfile(user.id, patch);
-      if (!upErr && data) setProfile(data as ProfileRow);
-      return { data, error: upErr };
+      try {
+        const data = await updateMutation.mutateAsync({ uid: user.id, patch });
+        return { data, error: null as null };
+      } catch (e) {
+        return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+      }
     },
-    [user],
+    [user, updateMutation],
   );
 
-  return { profile, loading, error, refetch: load, updateProfile };
+  const errorMsg =
+    profileQuery.error instanceof Error
+      ? profileQuery.error.message
+      : profileQuery.error
+        ? String(profileQuery.error)
+        : null;
+
+  return {
+    profile,
+    loading: profileQuery.isPending,
+    error: errorMsg,
+    refetch: profileQuery.refetch,
+    updateProfile,
+  };
 }

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as categoriesApi from '@/features/categories/api/categories';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import { sanitizeCategoryIcon, CATEGORY_TINTS } from '@/features/categories/utils/constants';
 import type { CategoryRow } from '@/features/categories/types';
 import type { TransactionKind } from '@/types/ledger';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 const FALLBACK_CAT: CategoryRow = {
   id: '__fallback__',
@@ -24,58 +26,62 @@ function compareCats(a: CategoryRow, b: CategoryRow): number {
   return (a.label || '').localeCompare(b.label || '');
 }
 
-function errMessage(e: unknown): string {
-  if (!e) return 'Something went wrong';
-  if (typeof e === 'object' && e !== null && 'message' in e && typeof (e as Error).message === 'string' && (e as Error).message) {
-    return (e as Error).message;
-  }
-  return String(e);
-}
-
 export type CategoryLists = { expense: CategoryRow[]; income: CategoryRow[] };
 
 export function useCategories() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const [rows, setRows] = useState<CategoryRow[]>([]);
-  const [loading, setLoading] = useState(Boolean(userId));
-  const [error, setError] = useState<string | null>(null);
-  const rowsRef = useRef(rows);
-  const lastOkUserIdRef = useRef<string | null>(null);
-  rowsRef.current = rows;
+  const qc = useQueryClient();
 
-  const load = useCallback(async () => {
-    if (!userId) {
-      setRows([]);
-      setLoading(false);
-      setError(null);
-      lastOkUserIdRef.current = null;
-      return;
-    }
-    const background = lastOkUserIdRef.current === userId && rowsRef.current.length > 0;
-    if (!background) {
-      setLoading(true);
-      setRows([]);
-    }
-    setError(null);
-    try {
-      const { data, error: qErr } = await categoriesApi.listCategories(userId);
-      if (qErr) throw qErr;
-      setRows((data as CategoryRow[]) || []);
-      lastOkUserIdRef.current = userId;
-    } catch (e) {
-      console.error('categories load', e);
-      setRows([]);
-      setError(errMessage(e));
-      lastOkUserIdRef.current = null;
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
+  const listQuery = useQuery({
+    queryKey: userId ? queryKeys.categories(userId) : ['categories', 'idle'],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const { data, error } = await categoriesApi.listCategories(userId!);
+      if (error) throw error;
+      return ((data as CategoryRow[]) || []) as CategoryRow[];
+    },
+  });
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const rows = useMemo(() => listQuery.data ?? [], [listQuery.data]);
+
+  const invalidate = useCallback(() => {
+    if (userId) void qc.invalidateQueries({ queryKey: [...queryKeys.categories(userId)] });
+  }, [qc, userId]);
+
+  const addMutation = useMutation({
+    mutationFn: async (row: Parameters<typeof categoriesApi.insertCategory>[0]) => {
+      const out = await categoriesApi.insertCategory(row);
+      if (out.error) throw out.error;
+      return out.data;
+    },
+    onSuccess: invalidate,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({
+      uid,
+      id,
+      patch,
+    }: {
+      uid: string;
+      id: string;
+      patch: { label: string; icon: string };
+    }) => {
+      const out = await categoriesApi.updateCategoryRow(uid, id, patch);
+      if (out.error) throw out.error;
+      return out.data;
+    },
+    onSuccess: invalidate,
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async ({ uid, id }: { uid: string; id: string }) => {
+      const out = await categoriesApi.deleteCategoryRow(uid, id);
+      if (out.error) throw out.error;
+    },
+    onSuccess: invalidate,
+  });
 
   const { catsExpense, catsIncome } = useMemo(() => {
     const expense = rows.filter((r) => rowKind(r) === 'expense').sort(compareCats);
@@ -117,18 +123,21 @@ export function useCategories() {
       const sort_order = list.length ? Math.max(...list.map((c) => c.sort_order)) + 1 : 0;
       const tint = CATEGORY_TINTS[list.length % CATEGORY_TINTS.length]!;
       const ic = sanitizeCategoryIcon(icon);
-      const { data, error } = await categoriesApi.insertCategory({
-        user_id: userId,
-        kind,
-        label: t,
-        icon: ic,
-        tint,
-        sort_order,
-      });
-      if (!error && data) setRows((prev) => [...prev, data as CategoryRow]);
-      return { data, error };
+      try {
+        const data = await addMutation.mutateAsync({
+          user_id: userId,
+          kind,
+          label: t,
+          icon: ic,
+          tint,
+          sort_order,
+        });
+        return { data, error: null as null };
+      } catch (e) {
+        return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+      }
     },
-    [userId, catsExpense, catsIncome],
+    [userId, catsExpense, catsIncome, addMutation],
   );
 
   const updateCategory = useCallback(
@@ -137,33 +146,42 @@ export function useCategories() {
       const t = (patch.label ?? '').trim();
       if (!t) return { error: new Error('label required'), data: null };
       const rowPatch = { label: t, icon: sanitizeCategoryIcon(patch.icon) };
-      const { data, error } = await categoriesApi.updateCategoryRow(userId, id, rowPatch);
-      if (!error && data) {
-        setRows((prev) => prev.map((r) => (r.id === id ? (data as CategoryRow) : r)));
+      try {
+        const data = await updateMutation.mutateAsync({ uid: userId, id, patch: rowPatch });
+        return { data, error: null as null };
+      } catch (e) {
+        return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
       }
-      return { data, error };
     },
-    [userId],
+    [userId, updateMutation],
   );
 
   const removeCategory = useCallback(
     async (_kind: TransactionKind, id: string) => {
       if (!userId) return { error: new Error('not signed in') as Error };
-      const { error } = await categoriesApi.deleteCategoryRow(userId, id);
-      if (!error) setRows((prev) => prev.filter((r) => r.id !== id));
-      return { error };
+      try {
+        await removeMutation.mutateAsync({ uid: userId, id });
+        return { error: undefined };
+      } catch (e) {
+        return { error: e instanceof Error ? e : new Error(String(e)) };
+      }
     },
-    [userId],
+    [userId, removeMutation],
   );
 
   return {
     catsExpense,
     catsIncome,
     lists,
-    loading,
-    error,
+    loading: listQuery.isPending,
+    error:
+      listQuery.error instanceof Error
+        ? listQuery.error.message
+        : listQuery.error
+          ? String(listQuery.error)
+          : null,
     resolveCat,
-    refetch: load,
+    refetch: listQuery.refetch,
     addCategory,
     updateCategory,
     removeCategory,

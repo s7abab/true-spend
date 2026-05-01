@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as transactionsApi from '@/features/transactions/api/transactions';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import { mapTxnRow, type DbTransactionRow } from '@/utils/txnMap';
 import { weekRangeMonday } from '@/utils/spending';
 import type { HomeMetrics, MappedTxn } from '@/features/transactions/types';
+import { queryKeys } from '@/shared/lib/queryKeys';
 
 function emptyHome(): HomeMetrics {
   return {
@@ -39,82 +41,101 @@ function aborted(e: unknown): boolean {
   return Boolean(/aborted|AbortError/i.test(err.message || '') || err.name === 'AbortError');
 }
 
+type HomeQueryData = { home: HomeMetrics; remoteError: string | null };
+
+async function fetchHomeBundle(userId: string, tz: string, signal: AbortSignal): Promise<HomeQueryData> {
+  const [w0, w1] = weekRangeMonday(0);
+  const [pw0, pw1] = weekRangeMonday(-1);
+
+  const [{ data: metrics, error: e1 }, { data: recentRows, error: e2 }] = await Promise.all([
+    transactionsApi.fetchHomeMetrics({
+      tz,
+      weekStart: w0.toISOString(),
+      weekEnd: w1.toISOString(),
+      prevWeekStart: pw0.toISOString(),
+      prevWeekEnd: pw1.toISOString(),
+      signal,
+    }),
+    transactionsApi.listRecentTransactions(userId, 5, { signal }),
+  ]);
+
+  if (signal.aborted) {
+    return { home: emptyHome(), remoteError: null };
+  }
+
+  if (e1 && !aborted(e1)) console.error('home metrics failed', e1);
+  if (e2 && !aborted(e2)) console.error('recent txns failed', e2);
+
+  const remoteError = aborted(e1) || aborted(e2) ? null : (e1?.message || e2?.message || null);
+
+  const m = metrics && typeof metrics === 'object' ? (metrics as Record<string, unknown>) : {};
+  const weekBuckets = normalizeWeekBuckets(m.week_buckets);
+
+  const home: HomeMetrics = {
+    lifetimeIncome: Number(m.lifetime_income) || 0,
+    lifetimeExpense: Number(m.lifetime_expense) || 0,
+    weekBuckets,
+    prevWeekExpense: Number(m.prev_week_expense) || 0,
+    recentTxns: ((recentRows as DbTransactionRow[]) || []).map((r) => mapTxnRow(r)),
+  };
+
+  return { home, remoteError };
+}
+
 export function useTransactions() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const [mutationGeneration, setMutationGeneration] = useState(0);
-  const [home, setHome] = useState<HomeMetrics | null>(null);
-  const [homeLoading, setHomeLoading] = useState(Boolean(userId));
-  const [txnError, setTxnError] = useState<string | null>(null);
+  const qc = useQueryClient();
 
   const tz = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     [],
   );
 
-  const loadHome = useCallback(
-    async (signal: AbortSignal | undefined) => {
-      if (!userId) {
-        setHome(null);
-        setTxnError(null);
-        setHomeLoading(false);
-        return;
-      }
-      setHomeLoading(true);
-      try {
-        const [w0, w1] = weekRangeMonday(0);
-        const [pw0, pw1] = weekRangeMonday(-1);
+  const homeQuery = useQuery({
+    queryKey: userId ? queryKeys.transactions.home(userId, tz) : ['transactions', 'home', 'idle'],
+    queryFn: ({ signal }) => fetchHomeBundle(userId!, tz, signal),
+    enabled: Boolean(userId),
+  });
 
-        const [{ data: metrics, error: e1 }, { data: recentRows, error: e2 }] = await Promise.all([
-          transactionsApi.fetchHomeMetrics({
-            tz,
-            weekStart: w0.toISOString(),
-            weekEnd: w1.toISOString(),
-            prevWeekStart: pw0.toISOString(),
-            prevWeekEnd: pw1.toISOString(),
-            signal,
-          }),
-          transactionsApi.listRecentTransactions(userId, 5, { signal }),
-        ]);
+  const invalidateTransactions = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: [...queryKeys.transactions.root] });
+  }, [qc]);
 
-        if (signal?.aborted) return;
-
-        if (e1 && !aborted(e1)) console.error('home metrics failed', e1);
-        if (e2 && !aborted(e2)) console.error('recent txns failed', e2);
-
-        const errMsg = aborted(e1) || aborted(e2) ? null : (e1?.message || e2?.message || null);
-        setTxnError(errMsg);
-
-        const m = metrics && typeof metrics === 'object' ? (metrics as Record<string, unknown>) : {};
-        const weekBuckets = normalizeWeekBuckets(m.week_buckets);
-
-        setHome({
-          lifetimeIncome: Number(m.lifetime_income) || 0,
-          lifetimeExpense: Number(m.lifetime_expense) || 0,
-          weekBuckets,
-          prevWeekExpense: Number(m.prev_week_expense) || 0,
-          recentTxns: ((recentRows as DbTransactionRow[]) || []).map((r) => mapTxnRow(r)),
-        });
-      } finally {
-        setHomeLoading(false);
-      }
+  const insertMutation = useMutation({
+    mutationFn: async (payload: {
+      user_id: string;
+      kind: string;
+      category_id: string | null;
+      amount: number;
+      title: string | null;
+      note: string | null;
+      occurred_at: string;
+    }) => {
+      const out = await transactionsApi.insertTransaction(payload);
+      if (out.error) throw out.error;
+      return out.data;
     },
-    [userId, tz],
-  );
+    onSuccess: invalidateTransactions,
+  });
 
-  useEffect(() => {
-    const ac = new AbortController();
-    void loadHome(ac.signal);
-    return () => ac.abort();
-  }, [loadHome, mutationGeneration]);
+  const deleteMutation = useMutation({
+    mutationFn: async ({ uid, id }: { uid: string; id: string }) => {
+      const out = await transactionsApi.deleteTransactionRow(uid, id);
+      if (out.error) throw out.error;
+    },
+    onSuccess: invalidateTransactions,
+  });
 
-  const bump = useCallback(() => {
-    setMutationGeneration((g) => g + 1);
-  }, []);
+  const home = homeQuery.data?.home ?? emptyHome();
+  const txnError =
+    homeQuery.data?.remoteError
+    ?? (homeQuery.error instanceof Error ? homeQuery.error.message : homeQuery.error ? String(homeQuery.error) : null);
+  const homeLoading = homeQuery.isPending;
 
-  const refetchTransactions = useCallback(() => {
-    setMutationGeneration((g) => g + 1);
-  }, []);
+  const refetchTransactions = useCallback(async () => {
+    await qc.invalidateQueries({ queryKey: [...queryKeys.transactions.root] });
+  }, [qc]);
 
   const addTransaction = useCallback(
     async ({
@@ -142,21 +163,27 @@ export function useTransactions() {
         note: note || null,
         occurred_at: occurred_at || new Date().toISOString(),
       };
-      const { data, error } = await transactionsApi.insertTransaction(payload);
-      if (!error) bump();
-      return { data, error };
+      try {
+        const data = await insertMutation.mutateAsync(payload);
+        return { data, error: null as null };
+      } catch (e) {
+        return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+      }
     },
-    [user, userId, bump],
+    [user, userId, insertMutation],
   );
 
   const removeTransaction = useCallback(
     async (id: string) => {
       if (!userId || !user) return { error: new Error('not signed in') };
-      const { error } = await transactionsApi.deleteTransactionRow(user.id, id);
-      if (!error) bump();
-      return { error };
+      try {
+        await deleteMutation.mutateAsync({ uid: user.id, id });
+        return { error: undefined };
+      } catch (e) {
+        return { error: e instanceof Error ? e : new Error(String(e)) };
+      }
     },
-    [user, userId, bump],
+    [user, userId, deleteMutation],
   );
 
   const exportAllTransactions = useCallback(async (): Promise<MappedTxn[]> => {
@@ -184,17 +211,14 @@ export function useTransactions() {
     return out;
   }, [user, userId]);
 
-  const homeModel = home ?? emptyHome();
-
   return {
-    home: homeModel,
+    home,
     homeLoading,
     loading: homeLoading,
     error: txnError,
-    refetchHome: loadHome,
+    refetchHome: () => homeQuery.refetch(),
     refetch: refetchTransactions,
     refetchTransactions,
-    mutationGeneration,
     addTransaction,
     removeTransaction,
     exportAllTransactions,

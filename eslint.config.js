@@ -41,4 +41,18 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: [
+      'src/features/auth/components/AuthContext.tsx',
+      'src/shared/components/Icons.tsx',
+    ],
+    plugins: {
+      react,
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 );
