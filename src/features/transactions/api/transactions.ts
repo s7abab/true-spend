@@ -50,6 +50,22 @@ export async function fetchPeriodSummary(fromIso: string, toIsoExclusive: string
   return withSignal(q, opts.signal);
 }
 
+export async function fetchPeriodTimeBuckets(
+  fromIso: string,
+  toIsoExclusive: string,
+  bucket: 'hour' | 'day' | 'month',
+  tz: string,
+  opts: { signal?: AbortSignal } = {},
+) {
+  const q = supabase.rpc('transaction_period_time_buckets', {
+    p_from: fromIso,
+    p_to: toIsoExclusive,
+    p_bucket: bucket,
+    p_tz: tz,
+  });
+  return withSignal(q, opts.signal);
+}
+
 export async function listRecentTransactions(userId: string, limit = 5, opts: { signal?: AbortSignal } = {}) {
   const q = supabase
     .from('transactions')

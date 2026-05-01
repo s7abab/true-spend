@@ -7,6 +7,7 @@ import { weekOverWeekLabel, todayIndexInCurrentWeek } from '@/utils/spending';
 import type { CategoryRow } from '@/features/categories/types';
 import type { TransactionKind } from '@/types/ledger';
 import type { MappedTxn } from '@/utils/txnMap';
+import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 
 // Two-char labels so Tue/Thu and Sat/Sun are distinguishable
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
@@ -51,8 +52,15 @@ export function HomeScreen({
     return { weekTotal: total, badge: lbl };
   }, [weekBuckets, prevWeekExpense]);
 
-  const maxSpark = Math.max(...weekBuckets, 1);
   const todayIdx = todayIndexInCurrentWeek();
+  const weeklyChartData = useMemo(
+    () =>
+      DAYS.map((day, idx) => ({
+        day,
+        amount: weekBuckets[idx] ?? 0,
+      })),
+    [weekBuckets],
+  );
 
   const badgeStyle =
     badge.tone === 'good'
@@ -139,43 +147,48 @@ export function HomeScreen({
             <ICTrend size={13} /> {badge.text}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 72 }}>
-          {weekBuckets.map((v, i) => {
-            const h = maxSpark > 0 ? Math.max(8, (v / maxSpark) * 54) : 8;
-            const active = i === todayIdx;
-            return (
-              <div
-                key={i}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 5,
-                  height: '100%',
-                  justifyContent: 'flex-end',
+        <div style={{ height: 96 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={weeklyChartData} margin={{ top: 6, right: 2, left: 2, bottom: 0 }}>
+              <XAxis
+                dataKey="day"
+                axisLine={false}
+                tickLine={false}
+                tick={({ x, y, payload }) => {
+                  const active = payload.value === DAYS[todayIdx];
+                  return (
+                    <text
+                      x={Number(x)}
+                      y={Number(y) + 12}
+                      textAnchor="middle"
+                      fontSize={10}
+                      fontWeight={active ? 700 : 500}
+                      fill={active ? '#0F0F12' : '#ACACB8'}
+                    >
+                      {payload.value}
+                    </text>
+                  );
                 }}
-              >
-                <div
-                  style={{
-                    width: '100%',
-                    height: `${h}px`,
-                    background: active ? '#0F0F12' : '#EBEBF0',
-                    borderRadius: '5px 5px 3px 3px',
-                  }}
-                />
-                <div
-                  style={{
-                    fontSize: 10,
-                    color: active ? '#0F0F12' : '#ACACB8',
-                    fontWeight: active ? 700 : 500,
-                  }}
-                >
-                  {DAYS[i]}
-                </div>
-              </div>
-            );
-          })}
+              />
+              <Tooltip
+                cursor={{ fill: 'rgba(15,15,18,0.03)' }}
+                formatter={(value) => [formatMoney(Number(value ?? 0), currency), 'Spent']}
+                contentStyle={{
+                  border: 'none',
+                  borderRadius: 10,
+                  boxShadow: '0 10px 24px rgba(15,15,18,0.12)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#0F0F12',
+                }}
+              />
+              <Bar dataKey="amount" radius={[6, 6, 3, 3]} barSize={18} minPointSize={8}>
+                {weeklyChartData.map((entry) => (
+                  <Cell key={entry.day} fill={entry.day === DAYS[todayIdx] ? '#0F0F12' : '#EBEBF0'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

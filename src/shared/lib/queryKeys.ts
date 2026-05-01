@@ -12,6 +12,8 @@ export const queryKeys = {
       ['transactions', 'stats', userId, rangeKey, breakdownKind] as const,
     periodSummary: (userId: string, rangeKey: string) =>
       ['transactions', 'periodSummary', userId, rangeKey] as const,
+    periodTrend: (userId: string, rangeKey: string, bucket: 'hour' | 'day' | 'month', tz: string) =>
+      ['transactions', 'periodTrend', userId, rangeKey, bucket, tz] as const,
     reportDetail: (userId: string, fingerprint: string, search: string) =>
       ['transactions', 'reportDetail', userId, fingerprint, search] as const,
   },

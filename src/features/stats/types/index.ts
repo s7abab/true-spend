@@ -10,3 +10,9 @@ export type PeriodSummary = {
   income_txn_count: number;
   expense_txn_count: number;
 };
+
+export type PeriodTrendPoint = {
+  key: string;
+  expense: number;
+  income: number;
+};
