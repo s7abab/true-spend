@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 
 function GoogleMark({ size = 18 }) {
@@ -11,6 +12,15 @@ function GoogleMark({ size = 18 }) {
     </svg>
   );
 }
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  show: (i) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: 0.06 * i, duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+  }),
+};
 
 export function SignInScreen() {
   const { signInWithGoogle } = useAuth();
@@ -40,7 +50,11 @@ export function SignInScreen() {
       }}
     >
       <div style={{ marginTop: '14vh', textAlign: 'center' }}>
-        <div
+        <motion.div
+          custom={0}
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
           style={{
             width: 72, height: 72, borderRadius: 22,
             background: 'linear-gradient(135deg, #0F0F12, #2A2A33)',
@@ -51,28 +65,40 @@ export function SignInScreen() {
           }}
         >
           T
-        </div>
-        <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.6 }}>
+        </motion.div>
+        <motion.div custom={1} variants={fadeUp} initial="hidden" animate="show" style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.6 }}>
           Welcome to Truspend
-        </div>
-        <div style={{ fontSize: 14, color: '#6B6B80', marginTop: 8, lineHeight: 1.45 }}>
+        </motion.div>
+        <motion.div custom={2} variants={fadeUp} initial="hidden" animate="show" style={{ fontSize: 14, color: '#6B6B80', marginTop: 8, lineHeight: 1.45 }}>
           Track every rupee. Spend with intent.
-        </div>
+        </motion.div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+      >
         {error && (
-          <div style={{
-            background: '#FFE9EE', color: '#B5304B', borderRadius: 12,
-            padding: '10px 14px', fontSize: 13, fontWeight: 500,
-          }}>
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            style={{
+              background: '#FFE9EE', color: '#B5304B', borderRadius: 12,
+              padding: '10px 14px', fontSize: 13, fontWeight: 500,
+            }}
+          >
             {error}
-          </div>
+          </motion.div>
         )}
-        <button
+        <motion.button
           type="button"
           onClick={onGoogle}
           disabled={busy}
+          whileTap={{ scale: busy ? 1 : 0.97 }}
+          whileHover={{ scale: busy ? 1 : 1.02 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 28 }}
           style={{
             width: '100%', height: 54,
             borderRadius: 16, border: '1px solid #E5E5EC',
@@ -87,11 +113,11 @@ export function SignInScreen() {
         >
           <GoogleMark />
           {busy ? 'Connecting…' : 'Continue with Google'}
-        </button>
+        </motion.button>
         <div style={{ fontSize: 11, color: '#ACACB8', textAlign: 'center', marginTop: 4 }}>
           By continuing you agree to be a sensible spender.
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

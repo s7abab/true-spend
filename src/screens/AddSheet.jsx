@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useLayoutEffect } from 'react';
+import { motion } from 'framer-motion';
 import { IClose, ICalendar, IChevDown, IChevLeft, IChevRight, IPlus, ICON_MAP } from '../components/Icons';
 import { formatDateLabel } from '../data/categories';
 import { currencyPrefix } from '../utils/money';
@@ -101,14 +102,43 @@ function Keypad({ onPress }) {
   );
 }
 
+function initialKindAndCat(expense, income) {
+  if (expense.length > 0) return { kind: 'expense', catId: expense[0].id };
+  if (income.length > 0) return { kind: 'income', catId: income[0].id };
+  return { kind: 'expense', catId: null };
+}
+
 /* ── Main AddSheet ── */
-export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose, onSave, currency = 'INR' }) {
-  const [kind,           setKind]           = useState('expense');
+export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose, onSave, currency = 'INR', saving = false }) {
+  const init = useMemo(
+    () => initialKindAndCat(categoriesExpense, categoriesIncome),
+    [categoriesExpense, categoriesIncome],
+  );
+  const [kind,           setKind]           = useState(init.kind);
   const [amount,         setAmount]         = useState('0');
-  const [catId,          setCatId]          = useState(() => categoriesExpense[0]?.id ?? null);
+  const [catId,          setCatId]          = useState(init.catId);
   const [note,           setNote]           = useState('');
   const [selectedDate,   setSelectedDate]   = useState(new Date(TODAY));
   const [showCal,        setShowCal]        = useState(false);
+
+  useEffect(() => {
+    const prev = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = prev;
+    };
+  }, []);
+
+  const hasExp = categoriesExpense.length > 0;
+  const hasInc = categoriesIncome.length > 0;
+
+  useEffect(() => {
+    const list = kind === 'expense' ? categoriesExpense : categoriesIncome;
+    if (list.some(c => c.id === catId)) return;
+    const next = initialKindAndCat(categoriesExpense, categoriesIncome);
+    setKind(next.kind);
+    setCatId(next.catId);
+  }, [kind, catId, categoriesExpense, categoriesIncome]);
 
   const cats      = kind === 'expense' ? categoriesExpense : categoriesIncome;
   const cat       = cats.find(c => c.id === catId) || cats[0];
@@ -117,8 +147,9 @@ export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose,
   const curSym    = currencyPrefix(currency);
 
   const handleKind = (k) => {
-    setKind(k);
     const list = k === 'expense' ? categoriesExpense : categoriesIncome;
+    if (!list.length) return;
+    setKind(k);
     setCatId(list[0]?.id ?? null);
   };
 
@@ -146,7 +177,7 @@ export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose,
   };
 
   const doSave = () => {
-    if (!canSave || !cat) return;
+    if (!canSave || !cat || saving) return;
     onSave({
       kind,
       category_id: cat.id,
@@ -158,24 +189,50 @@ export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose,
   };
 
   return (
-    <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="sheet">
+    <motion.div
+      className="overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.22 }}
+      onClick={e => e.target === e.currentTarget && !saving && onClose()}
+    >
+      <motion.div
+        className="sheet"
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+      >
         <div className="sheet-handle" />
 
         {/* header: close + toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 0' }}>
-          <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: 10, background: '#F4F5F7', border: 'none', display: 'grid', placeItems: 'center', color: '#6B6B80', flexShrink: 0 }}>
+          <button type="button" disabled={saving} onClick={onClose} aria-label="Close" style={{ width: 36, height: 36, borderRadius: 10, background: '#F4F5F7', border: 'none', display: 'grid', placeItems: 'center', color: '#6B6B80', flexShrink: 0, opacity: saving ? 0.5 : 1 }}>
             <IClose size={16} />
           </button>
           <div className="seg" style={{ flex: 1 }}>
             <div className="seg-thumb" style={{ left: isExp ? 3 : '50%', width: 'calc(50% - 3px)' }} />
-            {['expense', 'income'].map(t => (
-              <button key={t} className={`seg-btn${kind === t ? ' active' : ''}`}
-                onClick={() => handleKind(t)}
-                style={{ color: kind === t ? '#0F0F12' : '#ACACB8', textTransform: 'capitalize' }}>
-                {t}
-              </button>
-            ))}
+            {['expense', 'income'].map(t => {
+              const disabled = (t === 'expense' && !hasExp) || (t === 'income' && !hasInc);
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  disabled={disabled}
+                  className={`seg-btn${kind === t ? ' active' : ''}`}
+                  onClick={() => handleKind(t)}
+                  style={{
+                    color: disabled ? '#D8D8E0' : kind === t ? '#0F0F12' : '#ACACB8',
+                    textTransform: 'capitalize',
+                    opacity: disabled ? 0.55 : 1,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {t}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -255,25 +312,25 @@ export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose,
 
         {/* add button */}
         <div style={{ padding: '10px 16px', paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
-          <button disabled={!canSave} onClick={doSave} style={{
+          <button type="button" disabled={!canSave || saving} onClick={doSave} style={{
             width: '100%', height: 54, borderRadius: 16,
-            background: canSave ? heroColor : '#F0F0F5',
-            color: canSave ? '#fff' : '#ACACB8',
-            border: 'none', cursor: canSave ? 'pointer' : 'default',
+            background: canSave && !saving ? heroColor : '#F0F0F5',
+            color: canSave && !saving ? '#fff' : '#ACACB8',
+            border: 'none', cursor: canSave && !saving ? 'pointer' : 'default',
             fontSize: 17, fontWeight: 700, letterSpacing: -0.3,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            boxShadow: canSave ? `0 10px 24px -8px ${heroColor}99` : 'none',
+            boxShadow: canSave && !saving ? `0 10px 24px -8px ${heroColor}99` : 'none',
             transition: 'background 200ms, box-shadow 200ms',
             fontFamily: 'inherit',
           }}
-            onPointerDown={e => canSave && (e.currentTarget.style.transform = 'scale(0.98)')}
+            onPointerDown={e => canSave && !saving && (e.currentTarget.style.transform = 'scale(0.98)')}
             onPointerUp={e => (e.currentTarget.style.transform = '')}
           >
             <IPlus size={20} stroke={2.6} />
-            Add {isExp ? 'expense' : 'income'}
+            {saving ? 'Saving…' : `Add ${isExp ? 'expense' : 'income'}`}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

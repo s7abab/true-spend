@@ -307,7 +307,6 @@
   flex-direction: column;
   justify-content: flex-end;
   align-items: center;
-  animation: fadeIn 200ms ease;
 }
 
 /* bottom sheet */
@@ -318,7 +317,6 @@
   border-radius: 28px 28px 0 0;
   max-height: 94dvh;
   overflow-y: auto;
-  animation: slideUp 280ms cubic-bezier(.2,.8,.2,1);
   padding-bottom: env(safe-area-inset-bottom, 12px);
 }
 
@@ -449,20 +447,18 @@
 .settings-row:last-child { border-bottom: none; }
 
 /* ── Stats donut ── */
+/* Parent must be position: relative with explicit size (see StatsScreen). */
 .donut-center {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
   text-align: center;
+  pointer-events: none;
 }
 
-/* ── Toast ── */
+/* ── Toast (positioning handled by Framer wrapper in Toast.jsx) ── */
 .toast {
-  position: fixed;
-  bottom: 90px;
-  left: 50%;
-  transform: translateX(-50%);
   background: #0F0F12;
   color: #fff;
   padding: 12px 18px;
@@ -474,6 +470,11 @@
   font-weight: 600;
   white-space: nowrap;
   box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-  animation: toastUp 2000ms ease-out forwards;
-  z-index: 99;
+}
+.toast--error {
+  white-space: normal;
+  background: #3D1F24;
+  color: #FFE8EC;
+  border-radius: 16px;
+  max-width: min(420px, 100%);
 }

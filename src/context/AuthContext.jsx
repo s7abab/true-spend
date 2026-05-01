@@ -10,9 +10,10 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let active = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data, error }) => {
       if (!active) return;
-      setSession(data.session ?? null);
+      if (error) console.error('getSession', error);
+      setSession(data?.session ?? null);
       setLoading(false);
     });
 

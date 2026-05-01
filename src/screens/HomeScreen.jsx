@@ -2,12 +2,7 @@ import { useMemo } from 'react';
 import { IArrowDown, IArrowUp, ICTrend, IPlus, CatIcon } from '../components/Icons';
 import { CountUp } from '../components/CountUp';
 import { formatMoney } from '../utils/money';
-import {
-  expenseBucketsForWeek,
-  sumExpensesInWeek,
-  weekOverWeekLabel,
-  todayIndexInCurrentWeek,
-} from '../utils/spending';
+import { weekOverWeekLabel, todayIndexInCurrentWeek } from '../utils/spending';
 
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
@@ -32,29 +27,28 @@ function TxnRow({ txn, resolveCat, currency }) {
 }
 
 export function HomeScreen({
-  txns,
+  income,
+  expense,
+  weekBuckets,
+  prevWeekExpense,
+  recentTxns,
   accent = '#0F0F12',
   resolveCat,
   currency = 'INR',
   onSeeAll,
 }) {
-  const income  = txns.filter(t => t.kind === 'income').reduce((a, b)  => a + b.amount, 0);
-  const expense = txns.filter(t => t.kind === 'expense').reduce((a, b) => a + b.amount, 0);
   const balance = income - expense;
-  const recent  = txns.slice(0, 5);
 
   const monthShort = useMemo(
     () => new Date().toLocaleDateString('en-IN', { month: 'short' }),
     [],
   );
 
-  const { weekBuckets, weekTotal, badge } = useMemo(() => {
-    const buckets = expenseBucketsForWeek(txns, 0);
-    const total   = buckets.reduce((a, b) => a + b, 0);
-    const prev    = sumExpensesInWeek(txns, -1);
-    const lbl     = weekOverWeekLabel(total, prev);
-    return { weekBuckets: buckets, weekTotal: total, badge: lbl };
-  }, [txns]);
+  const { weekTotal, badge } = useMemo(() => {
+    const total = weekBuckets.reduce((a, b) => a + b, 0);
+    const lbl   = weekOverWeekLabel(total, prevWeekExpense);
+    return { weekTotal: total, badge: lbl };
+  }, [weekBuckets, prevWeekExpense]);
 
   const maxSpark = Math.max(...weekBuckets, 1);
   const todayIdx = todayIndexInCurrentWeek();
@@ -147,7 +141,7 @@ export function HomeScreen({
         </div>
       </div>
       <div style={{ margin: '0 16px', background: '#fff', borderRadius: 20, overflow: 'hidden' }}>
-        {recent.map(t => <TxnRow key={t.id} txn={t} resolveCat={resolveCat} currency={currency} />)}
+        {recentTxns.map(t => <TxnRow key={t.id} txn={t} resolveCat={resolveCat} currency={currency} />)}
       </div>
 
       <div style={{ height: 20 }} />

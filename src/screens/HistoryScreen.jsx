@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ISearch, CatIcon } from '../components/Icons';
 import { formatMoney } from '../utils/money';
 import { groupTxnsByDay } from '../utils/historyGroup';
+import { useHistoryTransactions } from '../hooks/useHistoryTransactions';
 
 function TxnRow({ txn, resolveCat, currency }) {
   const cat   = resolveCat(txn.cat, txn.kind);
@@ -23,24 +24,23 @@ function TxnRow({ txn, resolveCat, currency }) {
   );
 }
 
-export function HistoryScreen({ txns, resolveCat, currency = 'INR' }) {
+export function HistoryScreen({ resolveCat, currency = 'INR', refreshKey = 0 }) {
   const [filter, setFilter] = useState('all');
-  const [search,  setSearch] = useState('');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return txns
-      .filter(t => filter === 'all' || t.kind === filter)
-      .filter((t) => {
-        if (!q) return true;
-        const title = (t.title || '').toLowerCase();
-        const note  = (t.note || '').toLowerCase();
-        const amt   = String(Math.round(t.amount));
-        return title.includes(q) || note.includes(q) || amt.includes(q);
-      });
-  }, [txns, filter, search]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const groups = useMemo(() => groupTxnsByDay(filtered), [filtered]);
+  const { rows, loading, loadingMore, hasMore, error, loadMore } = useHistoryTransactions(
+    filter,
+    debouncedSearch,
+    refreshKey,
+  );
+
+  const groups = useMemo(() => groupTxnsByDay(rows), [rows]);
 
   return (
     <div>
@@ -68,9 +68,16 @@ export function HistoryScreen({ txns, resolveCat, currency = 'INR' }) {
         ))}
       </div>
 
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '24px 0', color: '#ACACB8', fontSize: 14 }}>Loading…</div>
+      )}
+      {error && (
+        <div style={{ textAlign: 'center', padding: '12px 16px', color: '#FF4D6D', fontSize: 13 }}>{error}</div>
+      )}
+
       {/* grouped list */}
       <div style={{ marginTop: 16, paddingBottom: 8 }}>
-        {groups.length > 0
+        {!loading && groups.length > 0
           ? groups.map(({ dayKey, header, list }) => (
             <div key={dayKey} style={{ marginBottom: 8 }}>
               <div style={{ padding: '0 20px 6px', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: '#ACACB8' }}>{header}</div>
@@ -79,8 +86,33 @@ export function HistoryScreen({ txns, resolveCat, currency = 'INR' }) {
               </div>
             </div>
           ))
-          : <div style={{ textAlign: 'center', padding: '60px 0', color: '#ACACB8', fontSize: 14 }}>No transactions found</div>
-        }
+          : null}
+        {!loading && groups.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#ACACB8', fontSize: 14 }}>No transactions found</div>
+        )}
+        {hasMore && !loading && (
+          <div style={{ padding: '16px 16px 24px', display: 'flex', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={loadMore}
+              disabled={loadingMore}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 12,
+                border: 'none',
+                background: '#0F0F12',
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: loadingMore ? 'wait' : 'pointer',
+                opacity: loadingMore ? 0.7 : 1,
+                fontFamily: 'inherit',
+              }}
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { ICheck } from './Icons';
 import { formatMoney } from '../utils/money';
 
@@ -21,16 +22,46 @@ function Confetti() {
 }
 
 export function Toast({ toast, accent, currency = 'INR' }) {
+  const isError  = toast.kind === 'error';
   const isIncome = toast.kind === 'income';
+
+  const pillClass = `toast${isError ? ' toast--error' : ''}`;
+
   return (
-    <>
-      <div className="toast">
-        <div style={{ width: 22, height: 22, borderRadius: 999, background: isIncome ? '#22A06B' : accent, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-          <ICheck size={13} stroke={2.6} />
-        </div>
-        {isIncome ? 'Income added' : 'Expense added'} · {formatMoney(toast.amount, currency)}
+    <motion.div
+      style={{
+        position: 'fixed',
+        bottom: 90,
+        left: 0,
+        right: 0,
+        display: 'flex',
+        justifyContent: 'center',
+        zIndex: 99,
+        pointerEvents: 'none',
+        padding: '0 16px',
+      }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 12 }}
+      transition={{ type: 'spring', stiffness: 460, damping: 34 }}
+    >
+      <div className={pillClass} style={{ pointerEvents: 'auto', maxWidth: '100%' }}>
+        {!isError && (
+          <div style={{ width: 22, height: 22, borderRadius: 999, background: isIncome ? '#22A06B' : accent, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+            <ICheck size={13} stroke={2.6} />
+          </div>
+        )}
+        {isError ? (
+          <span style={{ textAlign: 'left', wordBreak: 'break-word' }}>
+            {toast.message || 'Something went wrong'}
+          </span>
+        ) : (
+          <>
+            {isIncome ? 'Income added' : 'Expense added'} · {formatMoney(toast.amount, currency)}
+          </>
+        )}
       </div>
-      {isIncome && <Confetti />}
-    </>
+      {isIncome && !isError && <Confetti />}
+    </motion.div>
   );
 }

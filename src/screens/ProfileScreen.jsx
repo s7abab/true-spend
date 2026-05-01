@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { resolveAvatarUrl } from '../utils/avatar';
 
@@ -46,8 +46,10 @@ function AvatarCircle({ url, initials, size }) {
   );
 }
 
-export function ProfileScreen({ profile, user, updateProfile, lists, txns }) {
+export function ProfileScreen({ profile, user, updateProfile, lists, onExportTransactions }) {
   const { signOut } = useAuth();
+  const [exporting, setExporting] = useState(false);
+  const exportBusy = useRef(false);
 
   const fullName  = profile?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || 'There';
   const email     = profile?.email || user?.email || '';
@@ -63,14 +65,25 @@ export function ProfileScreen({ profile, user, updateProfile, lists, txns }) {
     if (error) console.error('update currency failed', error);
   }, [updateProfile, currency]);
 
-  const exportData = useCallback(() => {
-    downloadJson(`truspend-export-${new Date().toISOString().slice(0, 10)}.json`, {
-      exportedAt: new Date().toISOString(),
-      profile,
-      categories: lists,
-      transactions: txns,
-    });
-  }, [profile, lists, txns]);
+  const exportData = useCallback(async () => {
+    if (!onExportTransactions || exportBusy.current) return;
+    exportBusy.current = true;
+    setExporting(true);
+    try {
+      const transactions = await onExportTransactions();
+      downloadJson(`truspend-export-${new Date().toISOString().slice(0, 10)}.json`, {
+        exportedAt: new Date().toISOString(),
+        profile,
+        categories: lists,
+        transactions,
+      });
+    } catch (e) {
+      console.error('export failed', e);
+    } finally {
+      exportBusy.current = false;
+      setExporting(false);
+    }
+  }, [profile, lists, onExportTransactions]);
 
   const groups = useMemo(() => [
     {
@@ -92,12 +105,12 @@ export function ProfileScreen({ profile, user, updateProfile, lists, txns }) {
     },
     {
       items: [
-        { label: 'Export data', onClick: exportData },
+        { label: exporting ? 'Exporting…' : 'Export data', onClick: exportData },
         { label: 'Help & support' },
         { label: 'Sign out', danger: true, onClick: () => signOut() },
       ],
     },
-  ], [currency, cycleCurrency, exportData, signOut]);
+  ], [currency, cycleCurrency, exportData, exporting, signOut]);
 
   return (
     <div>

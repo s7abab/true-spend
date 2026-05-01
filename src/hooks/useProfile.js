@@ -3,47 +3,51 @@ import * as profilesApi from '../api/profiles';
 import { useAuth } from '../context/AuthContext';
 import { resolveAvatarUrl } from '../utils/avatar';
 
+function errMessage(e) {
+  if (!e) return 'Something went wrong';
+  if (typeof e.message === 'string' && e.message) return e.message;
+  return String(e);
+}
+
 export function useProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(Boolean(user));
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (!user) {
+  const load = useCallback(async () => {
+    if (!user?.id) {
       setProfile(null);
       setLoading(false);
-      return undefined;
+      setError(null);
+      return;
     }
-    let active = true;
     setLoading(true);
-
-    (async () => {
-      let { data, error } = await profilesApi.fetchProfile(user.id);
-      if (!active) return;
-      if (error) {
-        console.error('profile fetch failed', error);
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
+    setError(null);
+    try {
+      let { data, error: qErr } = await profilesApi.fetchProfile(user.id);
+      if (qErr) throw qErr;
       if (!data) {
         const row = profilesApi.profileRowFromUser(user);
         const ins = await profilesApi.insertProfile(row);
-        if (!active) return;
-        if (ins.error) console.error('profile insert (bootstrap)', ins.error);
+        if (ins.error) console.warn('profile bootstrap insert', ins.error);
         const again = await profilesApi.fetchProfile(user.id);
-        if (!active) return;
+        if (again.error) throw again.error;
         data = again.data;
-        if (again.error) console.error('profile bootstrap refetch failed', again.error);
       }
       setProfile(data);
+    } catch (e) {
+      console.error('profile load', e);
+      setProfile(null);
+      setError(errMessage(e));
+    } finally {
       setLoading(false);
-    })();
-
-    return () => {
-      active = false;
-    };
+    }
   }, [user]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   /** Backfill `profiles.avatar_url` from Google `picture` when the row exists but photo is empty. */
   useEffect(() => {
@@ -66,5 +70,5 @@ export function useProfile() {
     return { data, error };
   }, [user]);
 
-  return { profile, loading, updateProfile };
+  return { profile, loading, error, refetch: load, updateProfile };
 }
