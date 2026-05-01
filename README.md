@@ -17,20 +17,21 @@ npm run dev
 1. Create a **new** Supabase project for production. Copy the project URL and
    `anon` public key into `.env`.
 2. Open **SQL Editor** and run `supabase/migrations/0001_init.sql` **once**.
-   That file is the whole schema: `profiles`, `categories`, `transactions`,
-   row-level security, the new-user trigger (profile + default categories),
-   and all RPCs used by the app. There are no follow-up migrations in this
-   repo.
-3. If you previously mixed in another starter’s `profiles` table (extra
+   That file creates the schema: `profiles`, `categories`, `transactions`,
+   row-level security, the new-user trigger, and all RPCs used by the app.
+3. Run `supabase/migrations/0002_seed_default_categories_all_accounts.sql`
+   to backfill default categories for every existing account. This is safe to
+   re-run and only inserts missing defaults.
+4. If you previously mixed in another starter’s `profiles` table (extra
    columns such as `username`, missing `email`), use a fresh project or
    align your table manually before relying on OAuth sign-up.
-4. Enable Google as an auth provider:
+5. Enable Google as an auth provider:
    - Supabase Dashboard → **Authentication → Providers → Google** → enable
      and paste your Google OAuth client ID + secret.
    - Supabase Dashboard → **Authentication → URL Configuration** → add your
      dev origin (e.g. `http://localhost:5173`) and any production origins to
      the **Redirect URLs** allow-list.
-5. `npm run dev` and sign in with Google.
+6. `npm run dev` and sign in with Google.
 
 ## Stack
 
