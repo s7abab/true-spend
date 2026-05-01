@@ -1,4 +1,5 @@
 import { ICheck } from './Icons';
+import { formatMoney } from '../utils/money';
 
 const CONFETTI_COLORS = ['#7C5CFF', '#22A06B', '#FF7A59', '#FFD23F', '#FF5C8A'];
 
@@ -19,7 +20,7 @@ function Confetti() {
   );
 }
 
-export function Toast({ toast, accent }) {
+export function Toast({ toast, accent, currency = 'INR' }) {
   const isIncome = toast.kind === 'income';
   return (
     <>
@@ -27,7 +28,7 @@ export function Toast({ toast, accent }) {
         <div style={{ width: 22, height: 22, borderRadius: 999, background: isIncome ? '#22A06B' : accent, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
           <ICheck size={13} stroke={2.6} />
         </div>
-        {isIncome ? 'Income added' : 'Expense added'} · ₹{Math.round(toast.amount).toLocaleString('en-IN')}
+        {isIncome ? 'Income added' : 'Expense added'} · {formatMoney(toast.amount, currency)}
       </div>
       {isIncome && <Confetti />}
     </>

@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ISearch, CatIcon } from '../components/Icons';
-function TxnRow({ txn, resolveCat }) {
+import { formatMoney } from '../utils/money';
+import { groupTxnsByDay } from '../utils/historyGroup';
+
+function TxnRow({ txn, resolveCat, currency }) {
   const cat   = resolveCat(txn.cat, txn.kind);
   const isInc = txn.kind === 'income';
+  const amt   = formatMoney(txn.amount, currency);
   return (
     <div className="txn-row">
       <div className="txn-icon" style={{ background: cat.tint + '18', color: cat.tint }}>
@@ -13,23 +17,30 @@ function TxnRow({ txn, resolveCat }) {
         <div className="txn-time">{txn.time}</div>
       </div>
       <div className="txn-amount" style={{ color: isInc ? '#22A06B' : '#0F0F12' }}>
-        {isInc ? '+' : '−'}₹{Math.round(txn.amount).toLocaleString('en-IN')}
+        {isInc ? '+' : '−'}{amt}
       </div>
     </div>
   );
 }
 
-export function HistoryScreen({ txns, resolveCat }) {
+export function HistoryScreen({ txns, resolveCat, currency = 'INR' }) {
   const [filter, setFilter] = useState('all');
   const [search,  setSearch] = useState('');
 
-  const filtered = txns
-    .filter(t => filter === 'all' || t.kind === filter)
-    .filter(t => t.title.toLowerCase().includes(search.toLowerCase()));
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return txns
+      .filter(t => filter === 'all' || t.kind === filter)
+      .filter((t) => {
+        if (!q) return true;
+        const title = (t.title || '').toLowerCase();
+        const note  = (t.note || '').toLowerCase();
+        const amt   = String(Math.round(t.amount));
+        return title.includes(q) || note.includes(q) || amt.includes(q);
+      });
+  }, [txns, filter, search]);
 
-  // group by date label
-  const groups = {};
-  filtered.forEach(t => { (groups[t.time] = groups[t.time] || []).push(t); });
+  const groups = useMemo(() => groupTxnsByDay(filtered), [filtered]);
 
   return (
     <div>
@@ -59,12 +70,12 @@ export function HistoryScreen({ txns, resolveCat }) {
 
       {/* grouped list */}
       <div style={{ marginTop: 16, paddingBottom: 8 }}>
-        {Object.entries(groups).length > 0
-          ? Object.entries(groups).map(([day, list]) => (
-            <div key={day} style={{ marginBottom: 8 }}>
-              <div style={{ padding: '0 20px 6px', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: '#ACACB8' }}>{day}</div>
+        {groups.length > 0
+          ? groups.map(({ dayKey, header, list }) => (
+            <div key={dayKey} style={{ marginBottom: 8 }}>
+              <div style={{ padding: '0 20px 6px', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: '#ACACB8' }}>{header}</div>
               <div style={{ margin: '0 16px', background: '#fff', borderRadius: 18, overflow: 'hidden' }}>
-                {list.map(t => <TxnRow key={t.id} txn={t} resolveCat={resolveCat} />)}
+                {list.map(t => <TxnRow key={t.id} txn={t} resolveCat={resolveCat} currency={currency} />)}
               </div>
             </div>
           ))

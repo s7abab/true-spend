@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { IChevLeft, IChevRight, CatIcon } from '../components/Icons';
-import { fmtINR } from '../data/categories';
+import { formatMoney } from '../utils/money';
+import { weekRangeMonday } from '../utils/spending';
 
 const PERIODS = [
   { id: 'daily',   label: 'Day' },
@@ -9,45 +10,91 @@ const PERIODS = [
   { id: 'yearly',  label: 'Year' },
 ];
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const NOW = new Date(2026, 4, 1);
 
-function getPeriodInfo(period, offset) {
-  const d = new Date(NOW);
+function startOfDay(d) {
+  const x = new Date(d); x.setHours(0, 0, 0, 0); return x;
+}
+function startOfMonth(d) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+function startOfYear(d) {
+  return new Date(d.getFullYear(), 0, 1);
+}
+
+/**
+ * Returns [start, end) range covering the slice the user selected, plus a
+ * label/sub for the pager.
+ */
+function getPeriodWindow(period, offset, now = new Date()) {
   if (period === 'daily') {
-    d.setDate(d.getDate() + offset);
-    if (offset === 0)  return { label: 'Today',     sub: d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' }) };
-    if (offset === -1) return { label: 'Yesterday', sub: d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' }) };
-    return { label: `${MONTHS[d.getMonth()]} ${d.getDate()}`, sub: d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' }) };
+    const start = startOfDay(now);
+    start.setDate(start.getDate() + offset);
+    const end = new Date(start); end.setDate(end.getDate() + 1);
+    const sub = start.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+    let label;
+    if (offset === 0)       label = 'Today';
+    else if (offset === -1) label = 'Yesterday';
+    else                    label = `${MONTHS[start.getMonth()]} ${start.getDate()}`;
+    return { start, end, label, sub };
   }
   if (period === 'weekly') {
-    const start = new Date(d); start.setDate(d.getDate() + offset * 7 - d.getDay());
-    const end   = new Date(start); end.setDate(start.getDate() + 6);
+    const [start, end] = weekRangeMonday(offset, now);
+    const lastDay = new Date(end); lastDay.setDate(lastDay.getDate() - 1);
     return {
+      start, end,
       label: offset === 0 ? 'This week' : offset === -1 ? 'Last week' : `${MONTHS[start.getMonth()]} ${start.getDate()}`,
-      sub: `${MONTHS[start.getMonth()]} ${start.getDate()} – ${MONTHS[end.getMonth()]} ${end.getDate()}`,
+      sub:   `${MONTHS[start.getMonth()]} ${start.getDate()} – ${MONTHS[lastDay.getMonth()]} ${lastDay.getDate()}`,
     };
   }
   if (period === 'monthly') {
-    d.setMonth(d.getMonth() + offset);
-    return { label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}`, sub: offset === 0 ? 'This month' : offset === -1 ? 'Last month' : '' };
+    const start = startOfMonth(now);
+    start.setMonth(start.getMonth() + offset);
+    const end = new Date(start); end.setMonth(end.getMonth() + 1);
+    return {
+      start, end,
+      label: `${MONTHS[start.getMonth()]} ${start.getFullYear()}`,
+      sub:   offset === 0 ? 'This month' : offset === -1 ? 'Last month' : '',
+    };
   }
-  d.setFullYear(d.getFullYear() + offset);
-  return { label: String(d.getFullYear()), sub: offset === 0 ? 'This year' : offset === -1 ? 'Last year' : '' };
+  const start = startOfYear(now);
+  start.setFullYear(start.getFullYear() + offset);
+  const end = new Date(start); end.setFullYear(end.getFullYear() + 1);
+  return {
+    start, end,
+    label: String(start.getFullYear()),
+    sub:   offset === 0 ? 'This year' : offset === -1 ? 'Last year' : '',
+  };
 }
 
-export function StatsScreen({ txns, categoriesExpense }) {
+export function StatsScreen({ txns, categoriesExpense, currency = 'INR' }) {
   const [period, setPeriod] = useState('monthly');
   const [offset, setOffset] = useState(0);
 
-  const info       = useMemo(() => getPeriodInfo(period, offset), [period, offset]);
-  const scale      = { daily: 0.04, weekly: 0.25, monthly: 1, yearly: 12 }[period];
-  const expTxns    = txns.filter(t => t.kind === 'expense');
-  const totalSpent = Math.round(expTxns.reduce((a, b) => a + b.amount, 0) * scale);
+  const info = useMemo(() => getPeriodWindow(period, offset), [period, offset]);
+
+  const expTxns = useMemo(() => {
+    const startMs = info.start.getTime();
+    const endMs   = info.end.getTime();
+    return txns.filter((t) => {
+      if (t.kind !== 'expense') return false;
+      const ts = t.occurredDate
+        ? t.occurredDate.getTime()
+        : new Date(t.occurred_at || 0).getTime();
+      return ts >= startMs && ts < endMs;
+    });
+  }, [txns, info]);
+
+  const totalSpent = Math.round(expTxns.reduce((a, b) => a + b.amount, 0));
 
   const byCat = {};
-  expTxns.forEach(t => { byCat[t.cat] = (byCat[t.cat] || 0) + t.amount * scale; });
+  expTxns.forEach(t => { byCat[t.cat] = (byCat[t.cat] || 0) + t.amount; });
   const sorted = Object.entries(byCat)
-    .map(([id, amt]) => ({ cat: categoriesExpense.find(c => c.id === id) || categoriesExpense.at(-1), amt }))
+    .map(([id, amt]) => {
+      const cat = categoriesExpense.find(c => c.id === id)
+        || categoriesExpense.at(-1)
+        || { id, label: 'Other', icon: 'dots', tint: '#7A7A86' };
+      return { cat, amt };
+    })
     .sort((a, b) => b.amt - a.amt);
 
   const denom = totalSpent || 1;
@@ -110,7 +157,7 @@ export function StatsScreen({ txns, categoriesExpense }) {
         </svg>
         <div className="donut-center">
           <div style={{ fontSize: 11, color: '#ACACB8', fontWeight: 500 }}>Spent</div>
-          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, marginTop: 2 }}>{fmtINR(totalSpent)}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, marginTop: 2 }}>{formatMoney(totalSpent, currency)}</div>
         </div>
       </div>
 
@@ -126,7 +173,7 @@ export function StatsScreen({ txns, categoriesExpense }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{s.cat.label}</span>
-                    <span style={{ fontSize: 14, fontWeight: 700 }}>{fmtINR(s.amt)}</span>
+                    <span style={{ fontSize: 14, fontWeight: 700 }}>{formatMoney(s.amt, currency)}</span>
                   </div>
                   <div style={{ height: 5, borderRadius: 999, background: '#F0F0F5', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${pct}%`, background: s.cat.tint, borderRadius: 999 }} />

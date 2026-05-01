@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { CatIcon } from '../components/Icons';
 import { CategoryIconPicker } from '../components/CategoryIconPicker';
-import { defaultLabelFor, defaultIconFor, sanitizeCategoryIcon } from '../data/categories';
+import { sanitizeCategoryIcon } from '../data/categories';
 
 export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }) {
   const [kind, setKind] = useState('expense');
@@ -25,18 +25,22 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }) {
     setDraftIcon('dots');
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingId || !draft.trim()) return;
-    onUpdate(kind, editingId, { label: draft.trim(), icon: draftIcon });
+    const { error } = await Promise.resolve(onUpdate(kind, editingId, { label: draft.trim(), icon: draftIcon }));
+    if (error) console.error('category update failed', error);
     cancelEdit();
   };
 
-  const addNew = () => {
+  const addNew = async () => {
     const t = newName.trim();
     if (!t) return;
-    onAdd(kind, t, newIcon);
-    setNewName('');
-    setNewIcon('dots');
+    const { error } = await Promise.resolve(onAdd(kind, t, newIcon));
+    if (error) console.error('category add failed', error);
+    else {
+      setNewName('');
+      setNewIcon('dots');
+    }
   };
 
   const hero = kind === 'expense' ? accent : '#22A06B';
@@ -109,11 +113,6 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }) {
                       Save
                     </button>
                   </div>
-                  {!c.isCustom && (
-                    <div style={{ fontSize: 11, color: '#ACACB8' }}>
-                      Defaults: {defaultLabelFor(c.id, kind)} · icon {defaultIconFor(c.id, kind)}
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -122,7 +121,6 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }) {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: -0.2 }}>{c.label}</div>
-                    <div style={{ fontSize: 11, color: '#ACACB8', marginTop: 2 }}>{c.isCustom ? 'Custom' : 'Default'}</div>
                   </div>
                   <button
                     type="button"
@@ -134,19 +132,20 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }) {
                   >
                     Edit
                   </button>
-                  {c.isCustom && (
-                    <button
-                      type="button"
-                      onClick={() => onRemove(kind, c.id)}
-                      style={{
-                        border: 'none', background: 'transparent', color: '#ACACB8', fontSize: 22,
-                        lineHeight: 1, padding: '4px 8px', cursor: 'pointer', flexShrink: 0,
-                      }}
-                      aria-label={`Delete ${c.label}`}
-                    >
-                      ×
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const { error } = await Promise.resolve(onRemove(kind, c.id));
+                      if (error) console.error('category delete failed', error);
+                    }}
+                    style={{
+                      border: 'none', background: 'transparent', color: '#ACACB8', fontSize: 22,
+                      lineHeight: 1, padding: '4px 8px', cursor: 'pointer', flexShrink: 0,
+                    }}
+                    aria-label={`Delete ${c.label}`}
+                  >
+                    ×
+                  </button>
                 </div>
               )}
             </div>

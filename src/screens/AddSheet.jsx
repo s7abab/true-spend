@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { IClose, ICalendar, IChevDown, IChevLeft, IChevRight, IPlus, ICON_MAP } from '../components/Icons';
+import { formatDateLabel } from '../data/categories';
+import { currencyPrefix } from '../utils/money';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAY_NAMES   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -86,14 +88,6 @@ function Calendar({ selected, onSelect, heroColor }) {
 }
 
 /* ── Helpers ── */
-function formatDateLabel(date) {
-  const today     = TODAY;
-  const yesterday = new Date(TODAY); yesterday.setDate(TODAY.getDate() - 1);
-  if (date.toDateString() === today.toDateString())     return 'Today';
-  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-}
-
 function Keypad({ onPress }) {
   const keys = ['1','2','3','4','5','6','7','8','9','.','0','del'];
   return (
@@ -108,10 +102,10 @@ function Keypad({ onPress }) {
 }
 
 /* ── Main AddSheet ── */
-export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose, onSave }) {
+export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose, onSave, currency = 'INR' }) {
   const [kind,           setKind]           = useState('expense');
   const [amount,         setAmount]         = useState('0');
-  const [catId,          setCatId]          = useState('food');
+  const [catId,          setCatId]          = useState(() => categoriesExpense[0]?.id ?? null);
   const [note,           setNote]           = useState('');
   const [selectedDate,   setSelectedDate]   = useState(new Date(TODAY));
   const [showCal,        setShowCal]        = useState(false);
@@ -120,8 +114,13 @@ export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose,
   const cat       = cats.find(c => c.id === catId) || cats[0];
   const isExp     = kind === 'expense';
   const heroColor = isExp ? accent : '#22A06B';
+  const curSym    = currencyPrefix(currency);
 
-  const handleKind = (k) => { setKind(k); setCatId(k === 'expense' ? 'food' : 'salary'); };
+  const handleKind = (k) => {
+    setKind(k);
+    const list = k === 'expense' ? categoriesExpense : categoriesIncome;
+    setCatId(list[0]?.id ?? null);
+  };
 
   const press = (k) => {
     setAmount(prev => {
@@ -147,8 +146,15 @@ export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose,
   };
 
   const doSave = () => {
-    if (!canSave) return;
-    onSave({ kind, cat: catId, amount: numAmount, title: note.trim() || cat.label, time: dateLabel });
+    if (!canSave || !cat) return;
+    onSave({
+      kind,
+      category_id: cat.id,
+      amount:      numAmount,
+      title:       note.trim() || cat.label,
+      note:        note.trim() || null,
+      occurred_at: selectedDate.toISOString(),
+    });
   };
 
   return (
@@ -176,7 +182,7 @@ export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose,
         {/* amount + date pill */}
         <div style={{ padding: '20px 24px 14px', textAlign: 'center', borderBottom: showCal ? 'none' : '1px solid #F5F5F8' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3 }}>
-            <span style={{ fontSize: 24, fontWeight: 600, opacity: 0.35, verticalAlign: 'top', marginTop: 8, display: 'inline-block' }}>₹</span>
+            <span style={{ fontSize: 24, fontWeight: 600, opacity: 0.35, verticalAlign: 'top', marginTop: 8, display: 'inline-block' }}>{curSym}</span>
             <span style={{ fontSize: 52, fontWeight: 700, letterSpacing: -2, lineHeight: 1, color: numAmount > 0 ? heroColor : '#D1D1DB', transition: 'color 200ms' }}>
               {formatted}
             </span>
