@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
-import { ICheck, IClose, ICalendar, IChevDown, IChevLeft, IChevRight, IPlus, ITrash, ICON_MAP } from '@/shared/components/Icons';
+import { IBackspace, ICheck, IClose, ICalendar, IChevDown, IChevLeft, IChevRight, IPlus, ITrash, ICON_MAP } from '@/shared/components/Icons';
 import { formatDateLabel } from '@/utils/dateLabel';
 import { currencyPrefix } from '@/utils/money';
 import type { CategoryRow } from '@/features/categories/types';
@@ -135,7 +135,7 @@ function Keypad({ onPress }: { onPress: (k: string) => void }) {
     <div className="keypad">
       {keys.map((k) => (
         <button key={k} type="button" className="key" onClick={() => onPress(k)}>
-          {k === 'del' ? <IClose size={20} stroke={2.2} /> : k}
+          {k === 'del' ? <IBackspace size={20} stroke={2.1} /> : k}
         </button>
       ))}
     </div>

@@ -82,6 +82,13 @@ export const IClose = (p: IconBaseProps) => (
     <path d="M18 6L6 18" />
   </Icon>
 );
+export const IBackspace = (p: IconBaseProps) => (
+  <Icon {...p}>
+    <path d="M20 6H9l-6 6 6 6h11a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z" />
+    <path d="M11 10l5 5" />
+    <path d="M16 10l-5 5" />
+  </Icon>
+);
 export const IBell = (p: IconBaseProps) => (
   <Icon {...p}>
     <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
