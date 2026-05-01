@@ -13,7 +13,7 @@ function aborted(err: unknown): boolean {
   return Boolean(/aborted|AbortError/i.test(e.message || '') || e.name === 'AbortError');
 }
 
-export type ReportDetailFilter = {
+export type StatsDetailFilter = {
   rangeKey: string;
   fromIso: string;
   toIsoExclusive: string;
@@ -27,7 +27,7 @@ export type ReportDetailFilter = {
   amountMax: number | null;
 };
 
-export function useStatsDetailTransactions(filter: ReportDetailFilter | null) {
+export function useStatsDetailTransactions(filter: StatsDetailFilter | null) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
 

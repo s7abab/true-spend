@@ -1,10 +1,10 @@
 import type { HistoryFilterFields } from '@/features/history/types';
-import type { ReportDetailFilter } from '@/features/stats/hooks/useStatsDetailTransactions';
+import type { StatsDetailFilter } from '@/features/stats/hooks/useStatsDetailTransactions';
 
-/** Base scope from the chart / totals row; `list` is the global Report filter sheet. */
-export type ReportDetailBase = Omit<ReportDetailFilter, 'search' | 'rangeKey' | 'amountMin' | 'amountMax'>;
+/** Base scope from the chart / totals row; `list` is the Stats filter sheet. */
+export type StatsDetailBase = Omit<StatsDetailFilter, 'search' | 'rangeKey' | 'amountMin' | 'amountMax'>;
 
-export function mergeReportDetailFilter(base: ReportDetailBase, list: HistoryFilterFields): Omit<ReportDetailFilter, 'search'> {
+export function mergeStatsDetailFilter(base: StatsDetailBase, list: HistoryFilterFields): Omit<StatsDetailFilter, 'search'> {
   const isCategoryDrill = base.categoryScopeKey.startsWith('cat:');
   const fromIso = list.fromIso ?? base.fromIso;
   const toIsoExclusive = list.toIsoExclusive ?? base.toIsoExclusive;

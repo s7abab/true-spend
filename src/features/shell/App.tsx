@@ -28,7 +28,7 @@ type TabDef = { id: TabId; label: string; Icon: ComponentType<{ size?: number; s
 // Categories is no longer a tab — it lives under Profile as a sub-screen
 const TABS: (TabDef | null)[] = [
   { id: 'home', label: 'Home', Icon: IHome },
-  { id: 'stats', label: 'Report', Icon: IChart },
+  { id: 'stats', label: 'Stats', Icon: IChart },
   null, // FAB
   { id: 'history', label: 'History', Icon: IList },
   { id: 'profile', label: 'Profile', Icon: IUser },
@@ -346,7 +346,7 @@ function AuthedApp({ user }: { user: User | null }) {
         </div>
       </div>
     ) : tab === 'stats' ? (
-      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Report</div>
+      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Stats</div>
     ) : tab === 'history' ? (
       <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>History</div>
     ) : tab === 'profile' ? (

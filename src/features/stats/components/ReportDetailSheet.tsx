@@ -25,7 +25,7 @@ type ReportDetailSheetProps = {
   onTxnPress?: (txn: MappedTxn) => void;
 };
 
-export function ReportDetailSheet({
+export function StatsDetailSheet({
   open,
   title,
   subtitle,
