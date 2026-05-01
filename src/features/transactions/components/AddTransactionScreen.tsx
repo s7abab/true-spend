@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react';
+import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { IBackspace, ICheck, IClose, ICalendar, IPlus, ITrash, ICON_MAP } from '@/shared/components/Icons';
 import { parseDateInput, toDateInputValue } from '@/features/history/utils/dateRange';
