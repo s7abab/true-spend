@@ -37,8 +37,13 @@
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 
-.page-scroll--no-nav {
-  padding-bottom: 0;
+/* Full-screen flows (add transaction): no floating nav gutter — footer handles safe-area */
+.page-scroll.page-scroll--no-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.page-scroll.page-scroll--no-nav .app-main {
+  background: #fff;
 }
 
 /* ── Sticky app header (title + profile) ── */
@@ -379,6 +384,27 @@ button.txn-row.txn-row-btn:active {
   max-height: none;
   border-radius: 0;
   padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+}
+
+.add-screen {
+  flex: 1;
+  min-height: 0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.add-screen-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.add-screen-footer {
+  flex-shrink: 0;
+  background: #fff;
 }
 
 .sheet-handle {

@@ -5,7 +5,7 @@ import { HomeScreen } from '@/features/transactions/components/HomeScreen';
 import { StatsScreen } from '@/features/stats/components/StatsScreen';
 import { HistoryScreen } from '@/features/history/components/HistoryScreen';
 import { ProfileScreen } from '@/features/profile/components/ProfileScreen';
-import { AddSheet } from '@/features/transactions/components/AddSheet';
+import { AddTransactionScreen } from '@/features/transactions/components/AddTransactionScreen';
 import { CategoriesScreen } from '@/features/categories/components/CategoriesScreen';
 import { SignInScreen } from '@/features/auth/components/SignInScreen';
 import { AppTopBar } from '@/shared/components/AppTopBar';
@@ -315,7 +315,7 @@ function AuthedApp({ user }: { user: User | null }) {
   }[tab];
 
   const mainContent = adding ? (
-    <AddSheet
+    <AddTransactionScreen
       key={editingTxn?.id ?? 'add-page'}
       accent={ACCENT}
       categoriesExpense={catsExpense}

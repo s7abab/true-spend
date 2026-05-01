@@ -155,7 +155,7 @@ function txnAmountKeypad(n: number): string {
   return v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-export type AddSheetSavePayload = {
+export type AddTransactionSavePayload = {
   kind: TransactionKind;
   category_id: string;
   amount: number;
@@ -164,12 +164,12 @@ export type AddSheetSavePayload = {
   occurred_at: string;
 };
 
-type AddSheetProps = {
+type AddTransactionScreenProps = {
   accent: string;
   categoriesExpense: CategoryRow[];
   categoriesIncome: CategoryRow[];
   onClose: () => void;
-  onSave: (t: AddSheetSavePayload) => void;
+  onSave: (t: AddTransactionSavePayload) => void;
   initialTxn?: MappedTxn | null;
   onDelete?: () => void;
   deleting?: boolean;
@@ -178,7 +178,7 @@ type AddSheetProps = {
   asPage?: boolean;
 };
 
-export function AddSheet({
+export function AddTransactionScreen({
   accent,
   categoriesExpense,
   categoriesIncome,
@@ -190,7 +190,7 @@ export function AddSheet({
   currency = 'INR',
   saving = false,
   asPage = false,
-}: AddSheetProps) {
+}: AddTransactionScreenProps) {
   const isEdit = Boolean(initialTxn);
   const [kind, setKind] = useState<TransactionKind>(() =>
     initialTxn ? initialTxn.kind : initialKindAndCat(categoriesExpense, categoriesIncome).kind,
@@ -294,229 +294,263 @@ export function AddSheet({
     transition: 'transform 200ms',
   };
 
-  return (
-    <motion.div
-      className={`overlay add-sheet-overlay${asPage ? ' add-page-overlay' : ''}`}
-      style={asPage ? { minHeight: '100%', height: '100%' } : undefined}
-      initial={asPage ? { opacity: 1 } : { opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={asPage ? { opacity: 1 } : { opacity: 0 }}
-      transition={{ duration: 0.22 }}
-      onClick={(e) => !asPage && e.target === e.currentTarget && !busy && onClose()}
-    >
-      <motion.div
-        className={`sheet${asPage ? ' add-page-sheet' : ''}`}
-        style={asPage ? { minHeight: '100%', height: '100%' } : undefined}
-        initial={asPage ? { opacity: 1 } : { y: '100%' }}
-        animate={asPage ? { opacity: 1 } : { y: 0 }}
-        exit={asPage ? { opacity: 1 } : { y: '100%' }}
-        transition={{ type: 'spring', damping: 28, stiffness: 340 }}
-        // Swipe-to-dismiss: drag down past 120px or fast flick closes the sheet
-        drag={asPage || busy ? false : 'y'}
-        dragConstraints={{ top: 0 }}
-        dragElastic={{ top: 0, bottom: 0.4 }}
-        onDragEnd={(_, info) => {
-          if (!asPage && !busy && (info.offset.y > 120 || info.velocity.y > 500)) onClose();
-        }}
-      >
-        {!asPage && <div className="sheet-handle" />}
+  const sheetHandle = !asPage ? <div className="sheet-handle" /> : null;
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 0' }}>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              width: 36, height: 36, borderRadius: 10, background: '#F4F5F7',
-              border: 'none', display: 'grid', placeItems: 'center',
-              color: '#6B6B80', flexShrink: 0, opacity: busy ? 0.5 : 1,
-            }}
-          >
-            <IClose size={16} />
-          </button>
-          <div className="seg" style={{ flex: 1 }}>
-            <div className="seg-thumb" style={{ left: isExp ? 3 : '50%', width: 'calc(50% - 3px)' }} />
-            {(['expense', 'income'] as const).map((t) => {
-              const disabled = (t === 'expense' && !hasExp) || (t === 'income' && !hasInc);
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  disabled={disabled || busy}
-                  className={`seg-btn${kind === t ? ' active' : ''}`}
-                  onClick={() => handleKind(t)}
-                  style={{
-                    color: disabled ? '#D8D8E0' : kind === t ? '#0F0F12' : '#ACACB8',
-                    textTransform: 'capitalize',
-                    opacity: disabled ? 0.55 : 1,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {t}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div
+  const formScroll = (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 0' }}>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onClose}
+          aria-label="Close"
           style={{
-            padding: '20px 24px 14px',
-            textAlign: 'center',
-            borderBottom: showCal ? 'none' : '1px solid #F5F5F8',
+            width: 36, height: 36, borderRadius: 10, background: '#F4F5F7',
+            border: 'none', display: 'grid', placeItems: 'center',
+            color: '#6B6B80', flexShrink: 0, opacity: busy ? 0.5 : 1,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3 }}>
-            <span
-              style={{
-                fontSize: 24, fontWeight: 600, opacity: 0.35,
-                verticalAlign: 'top', marginTop: 8, display: 'inline-block',
-              }}
-            >
-              {curSym}
-            </span>
-            <span
-              style={{
-                fontSize: 52, fontWeight: 700, letterSpacing: -2, lineHeight: 1,
-                color: numAmount > 0 ? heroColor : '#D1D1DB',
-                transition: 'color 200ms',
-              }}
-            >
-              {formatted}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowCal((v) => !v)}
-            style={{
-              marginTop: 10,
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              padding: '6px 13px', borderRadius: 999,
-              background: showCal ? heroColor : '#F4F5F7',
-              color: showCal ? '#fff' : '#6B6B80',
-              border: 'none', cursor: 'pointer',
-              fontSize: 13, fontWeight: 600,
-              transition: 'background 180ms, color 180ms',
-            }}
-          >
-            <ICalendar size={13} stroke={2} />
-            {dateLabel}
-            <IChevDown size={12} style={chevStyle} />
-          </button>
-        </div>
-
-        {showCal && (
-          <div style={{ borderBottom: '1px solid #F5F5F8' }}>
-            <Calendar selected={selectedDate} onSelect={handleDateSelect} heroColor={heroColor} />
-          </div>
-        )}
-
-        <div className="cat-strip" style={{ borderBottom: '1px solid #F5F5F8' }}>
-          {cats.map((c) => {
-            const active = c.id === catId;
-            const IconCmp = ICON_MAP[c.icon] || ICON_MAP.dots;
+          <IClose size={16} />
+        </button>
+        <div className="seg" style={{ flex: 1 }}>
+          <div className="seg-thumb" style={{ left: isExp ? 3 : '50%', width: 'calc(50% - 3px)' }} />
+          {(['expense', 'income'] as const).map((t) => {
+            const disabled = (t === 'expense' && !hasExp) || (t === 'income' && !hasInc);
             return (
               <button
-                key={c.id}
+                key={t}
                 type="button"
-                className="cat-btn"
-                disabled={busy}
-                ref={(el) => {
-                  if (el) catBtnRefs.current.set(c.id, el);
-                  else catBtnRefs.current.delete(c.id);
-                }}
-                onClick={() => setCatId(c.id)}
+                disabled={disabled || busy}
+                className={`seg-btn${kind === t ? ' active' : ''}`}
+                onClick={() => handleKind(t)}
                 style={{
-                  background: active ? c.tint : '#F4F5F7',
-                  color: active ? '#fff' : '#0F0F12',
-                  boxShadow: active ? `0 4px 12px -4px ${c.tint}88` : 'none',
+                  color: disabled ? '#D8D8E0' : kind === t ? '#0F0F12' : '#ACACB8',
+                  textTransform: 'capitalize',
+                  opacity: disabled ? 0.55 : 1,
+                  cursor: disabled ? 'not-allowed' : 'pointer',
                 }}
               >
-                <span
-                  style={{
-                    width: 24, height: 24, borderRadius: 7, flexShrink: 0,
-                    background: active ? 'rgba(255,255,255,0.2)' : `${c.tint}18`,
-                    color: active ? '#fff' : c.tint,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <IconCmp size={13} stroke={2.2} />
-                </span>
-                {c.label}
+                {t}
               </button>
             );
           })}
         </div>
+      </div>
 
-        <div style={{ padding: '10px 16px', borderBottom: '1px solid #F5F5F8' }}>
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            disabled={busy}
-            placeholder="Add a note (optional)"
+      <div
+        style={{
+          padding: '20px 24px 14px',
+          textAlign: 'center',
+          borderBottom: showCal ? 'none' : '1px solid #F5F5F8',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3 }}>
+          <span
             style={{
-              width: '100%', height: 40, background: '#F4F5F7',
-              border: 'none', borderRadius: 10, padding: '0 14px',
-              fontSize: 14, color: '#0F0F12', outline: 'none', fontFamily: 'inherit',
+              fontSize: 24, fontWeight: 600, opacity: 0.35,
+              verticalAlign: 'top', marginTop: 8, display: 'inline-block',
             }}
-          />
+          >
+            {curSym}
+          </span>
+          <span
+            style={{
+              fontSize: 52, fontWeight: 700, letterSpacing: -2, lineHeight: 1,
+              color: numAmount > 0 ? heroColor : '#D1D1DB',
+              transition: 'color 200ms',
+            }}
+          >
+            {formatted}
+          </span>
         </div>
 
-        {!showCal && (
-          <div style={{ opacity: busy ? 0.45 : 1, pointerEvents: busy ? 'none' : 'auto' }}>
-            <Keypad onPress={press} />
-          </div>
-        )}
-
-        <div
+        <button
+          type="button"
+          onClick={() => setShowCal((v) => !v)}
           style={{
-            display: 'flex', gap: 10, alignItems: 'stretch',
-            padding: '10px 16px',
-            paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+            marginTop: 10,
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '6px 13px', borderRadius: 999,
+            background: showCal ? heroColor : '#F4F5F7',
+            color: showCal ? '#fff' : '#6B6B80',
+            border: 'none', cursor: 'pointer',
+            fontSize: 13, fontWeight: 600,
+            transition: 'background 180ms, color 180ms',
           }}
         >
-          {isEdit && onDelete ? (
+          <ICalendar size={13} stroke={2} />
+          {dateLabel}
+          <IChevDown size={12} style={chevStyle} />
+        </button>
+      </div>
+
+      {showCal && (
+        <div style={{ borderBottom: '1px solid #F5F5F8' }}>
+          <Calendar selected={selectedDate} onSelect={handleDateSelect} heroColor={heroColor} />
+        </div>
+      )}
+
+      <div className="cat-strip" style={{ borderBottom: '1px solid #F5F5F8' }}>
+        {cats.map((c) => {
+          const active = c.id === catId;
+          const IconCmp = ICON_MAP[c.icon] || ICON_MAP.dots;
+          return (
             <button
+              key={c.id}
               type="button"
+              className="cat-btn"
               disabled={busy}
-              onClick={onDelete}
-              aria-label={deleting ? 'Deleting…' : 'Delete transaction'}
-              title="Delete"
+              ref={(el) => {
+                if (el) catBtnRefs.current.set(c.id, el);
+                else catBtnRefs.current.delete(c.id);
+              }}
+              onClick={() => setCatId(c.id)}
               style={{
-                flexShrink: 0, width: 54, height: 54, borderRadius: 16,
-                border: 'none', background: 'rgba(255, 77, 109, 0.1)',
-                color: '#D92D4A', cursor: busy ? 'default' : 'pointer',
-                display: 'grid', placeItems: 'center',
-                fontFamily: 'inherit', opacity: busy ? 0.55 : 1,
+                background: active ? c.tint : '#F4F5F7',
+                color: active ? '#fff' : '#0F0F12',
+                boxShadow: active ? `0 4px 12px -4px ${c.tint}88` : 'none',
               }}
             >
-              <ITrash size={20} stroke={2} />
+              <span
+                style={{
+                  width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+                  background: active ? 'rgba(255,255,255,0.2)' : `${c.tint}18`,
+                  color: active ? '#fff' : c.tint,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <IconCmp size={13} stroke={2.2} />
+              </span>
+              {c.label}
             </button>
-          ) : null}
-          <button
-            type="button"
-            disabled={!canSave || busy}
-            onClick={doSave}
-            style={{
-              flex: 1, minWidth: 0, height: 54, borderRadius: 16,
-              background: canSave && !busy ? heroColor : '#F0F0F5',
-              color: canSave && !busy ? '#fff' : '#ACACB8',
-              border: 'none', cursor: canSave && !busy ? 'pointer' : 'default',
-              fontSize: 17, fontWeight: 700, letterSpacing: -0.3,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              boxShadow: canSave && !busy ? `0 10px 24px -8px ${heroColor}99` : 'none',
-              transition: 'background 200ms, box-shadow 200ms',
-              fontFamily: 'inherit',
-            }}
-            onPointerDown={(e) => { if (canSave && !busy) e.currentTarget.style.transform = 'scale(0.98)'; }}
-            onPointerUp={(e) => { e.currentTarget.style.transform = ''; }}
-          >
-            {isEdit ? <ICheck size={20} stroke={2.6} /> : <IPlus size={20} stroke={2.6} />}
-            {saving ? 'Saving…' : isEdit ? 'Save changes' : `Add ${isExp ? 'expense' : 'income'}`}
-          </button>
+          );
+        })}
+      </div>
+
+      <div
+        style={{
+          padding: '10px 16px',
+          borderBottom: asPage && !showCal ? 'none' : '1px solid #F5F5F8',
+        }}
+      >
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          disabled={busy}
+          placeholder="Add a note (optional)"
+          style={{
+            width: '100%', height: 40, background: '#F4F5F7',
+            border: 'none', borderRadius: 10, padding: '0 14px',
+            fontSize: 14, color: '#0F0F12', outline: 'none', fontFamily: 'inherit',
+          }}
+        />
+      </div>
+    </>
+  );
+
+  const keypadBlock = !showCal ? (
+    <div style={{ opacity: busy ? 0.45 : 1, pointerEvents: busy ? 'none' : 'auto' }}>
+      <Keypad onPress={press} />
+    </div>
+  ) : null;
+
+  const actionsRow = (
+    <div
+      style={{
+        display: 'flex', gap: 10, alignItems: 'stretch',
+        padding: '10px 16px',
+        paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+      }}
+    >
+      {isEdit && onDelete ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onDelete}
+          aria-label={deleting ? 'Deleting…' : 'Delete transaction'}
+          title="Delete"
+          style={{
+            flexShrink: 0, width: 54, height: 54, borderRadius: 16,
+            border: 'none', background: 'rgba(255, 77, 109, 0.1)',
+            color: '#D92D4A', cursor: busy ? 'default' : 'pointer',
+            display: 'grid', placeItems: 'center',
+            fontFamily: 'inherit', opacity: busy ? 0.55 : 1,
+          }}
+        >
+          <ITrash size={20} stroke={2} />
+        </button>
+      ) : null}
+      <button
+        type="button"
+        disabled={!canSave || busy}
+        onClick={doSave}
+        style={{
+          flex: 1, minWidth: 0, height: 54, borderRadius: 16,
+          background: canSave && !busy ? heroColor : '#F0F0F5',
+          color: canSave && !busy ? '#fff' : '#ACACB8',
+          border: 'none', cursor: canSave && !busy ? 'pointer' : 'default',
+          fontSize: 17, fontWeight: 700, letterSpacing: -0.3,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          boxShadow: canSave && !busy ? `0 10px 24px -8px ${heroColor}99` : 'none',
+          transition: 'background 200ms, box-shadow 200ms',
+          fontFamily: 'inherit',
+        }}
+        onPointerDown={(e) => { if (canSave && !busy) e.currentTarget.style.transform = 'scale(0.98)'; }}
+        onPointerUp={(e) => { e.currentTarget.style.transform = ''; }}
+      >
+        {isEdit ? <ICheck size={20} stroke={2.6} /> : <IPlus size={20} stroke={2.6} />}
+        {saving ? 'Saving…' : isEdit ? 'Save changes' : `Add ${isExp ? 'expense' : 'income'}`}
+      </button>
+    </div>
+  );
+
+  if (asPage) {
+    return (
+      <div className="add-screen">
+        <div className="add-screen-body">
+          {formScroll}
         </div>
+        <div className="add-screen-footer">
+          {keypadBlock}
+          {actionsRow}
+        </div>
+      </div>
+    );
+  }
+
+  const sheetContent = (
+    <>
+      {sheetHandle}
+      {formScroll}
+      {keypadBlock}
+      {actionsRow}
+    </>
+  );
+
+  return (
+    <motion.div
+      className="overlay add-sheet-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.22 }}
+      onClick={(e) => e.target === e.currentTarget && !busy && onClose()}
+    >
+      <motion.div
+        className="sheet"
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+        // Swipe-to-dismiss: drag down past 120px or fast flick closes the sheet
+        drag={busy ? false : 'y'}
+        dragConstraints={{ top: 0 }}
+        dragElastic={{ top: 0, bottom: 0.4 }}
+        onDragEnd={(_, info) => {
+          if (!busy && (info.offset.y > 120 || info.velocity.y > 500)) onClose();
+        }}
+      >
+        {sheetContent}
       </motion.div>
     </motion.div>
   );
