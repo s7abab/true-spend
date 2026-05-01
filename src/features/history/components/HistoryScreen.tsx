@@ -13,6 +13,7 @@ import {
   type HistoryFilterFields,
   type HistoryTransactionQuery,
 } from '@/features/history/types';
+import '@/features/history/styles/HistoryFilters.css';
 
 export { TxnRow } from '@/shared/components/TxnRow';
 
@@ -101,17 +102,17 @@ export function HistoryScreen({
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'stretch', margin: '12px 16px 0' }}>
-        <div className="search-wrap search-wrap--with-side" style={{ margin: 0, flex: 1, minWidth: 0 }}>
-          <ISearch
-            size={15}
-            style={{
-              position: 'absolute', left: 13, top: '50%',
-              transform: 'translateY(-50%)', color: '#ACACB8', pointerEvents: 'none',
-            }}
-          />
+      <div className="history-toolbar">
+        <div className="history-toolbar__search-wrap">
+          <span className="history-toolbar__search-icon" aria-hidden>
+            <ISearch size={15} />
+          </span>
           <input
-            className="search-input"
+            className="history-toolbar__search-input"
+            type="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            spellCheck={false}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search transactions…"
@@ -127,7 +128,7 @@ export function HistoryScreen({
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, padding: '12px 16px 0' }}>
+      <div className="history-chip-row">
         {(
           [
             { id: 'all' as const, label: 'All' },

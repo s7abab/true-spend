@@ -1,132 +1,17 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
-import { IBackspace, ICheck, IClose, ICalendar, IChevDown, IChevLeft, IChevRight, IPlus, ITrash, ICON_MAP } from '@/shared/components/Icons';
+import { IBackspace, ICheck, IClose, ICalendar, IPlus, ITrash, ICON_MAP } from '@/shared/components/Icons';
+import { parseDateInput, toDateInputValue } from '@/features/history/utils/dateRange';
 import { formatDateLabel } from '@/utils/dateLabel';
 import { currencyPrefix } from '@/utils/money';
 import type { CategoryRow } from '@/features/categories/types';
 import type { TransactionKind } from '@/types/ledger';
 import type { MappedTxn } from '@/utils/txnMap';
 
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-
 function getToday(): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d;
-}
-
-type CalendarProps = {
-  selected: Date;
-  onSelect: (d: Date) => void;
-  heroColor: string;
-};
-
-function Calendar({ selected, onSelect, heroColor }: CalendarProps) {
-  // Compute today fresh each time Calendar mounts so it stays accurate across midnight
-  const today = useMemo(getToday, []);
-
-  const [viewYear, setViewYear] = useState(selected.getFullYear());
-  const [viewMonth, setViewMonth] = useState(selected.getMonth());
-
-  const prevMonth = () => {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
-    else setViewMonth((m) => m - 1);
-  };
-  const nextMonth = () => {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
-    else setViewMonth((m) => m + 1);
-  };
-
-  // Prevent navigating past the current month
-  const isNextDisabled =
-    viewYear > today.getFullYear() ||
-    (viewYear === today.getFullYear() && viewMonth >= today.getMonth());
-
-  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  const isToday = (d: number) =>
-    d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
-  const isSelected = (d: number) =>
-    d === selected.getDate() && viewMonth === selected.getMonth() && viewYear === selected.getFullYear();
-
-  return (
-    <div style={{ padding: '0 16px 16px', animation: 'calFade 180ms ease' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <button
-          type="button"
-          onClick={prevMonth}
-          style={{
-            width: 36, height: 36, border: 'none', background: '#F4F5F7',
-            borderRadius: 10, display: 'grid', placeItems: 'center', cursor: 'pointer', color: '#0F0F12',
-          }}
-        >
-          <IChevLeft size={16} />
-        </button>
-        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: -0.3 }}>
-          {MONTH_NAMES[viewMonth]} {viewYear}
-        </div>
-        <button
-          type="button"
-          onClick={nextMonth}
-          disabled={isNextDisabled}
-          style={{
-            width: 36, height: 36, border: 'none', background: '#F4F5F7',
-            borderRadius: 10, display: 'grid', placeItems: 'center',
-            cursor: isNextDisabled ? 'default' : 'pointer',
-            color: '#0F0F12', opacity: isNextDisabled ? 0.3 : 1,
-          }}
-        >
-          <IChevRight size={16} />
-        </button>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6 }}>
-        {DAY_NAMES.map((d) => (
-          <div
-            key={d}
-            style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#ACACB8', padding: '4px 0', letterSpacing: 0.2 }}
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px 0' }}>
-        {cells.map((day, i) => {
-          if (!day) return <div key={`e${i}`} />;
-          const sel = isSelected(day);
-          const tod = isToday(day);
-          return (
-            <button
-              key={day}
-              type="button"
-              onClick={() => onSelect(new Date(viewYear, viewMonth, day))}
-              style={{
-                width: '100%', aspectRatio: '1', border: 'none', borderRadius: 999,
-                cursor: 'pointer', fontFamily: 'inherit', fontSize: 14,
-                fontWeight: sel ? 700 : tod ? 600 : 400,
-                background: sel ? heroColor : 'transparent',
-                color: sel ? '#fff' : tod ? heroColor : '#0F0F12',
-                display: 'grid', placeItems: 'center', transition: 'background 140ms',
-                outline: tod && !sel ? `2px solid ${heroColor}` : 'none',
-                outlineOffset: '-2px',
-              }}
-            >
-              {day}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
 function Keypad({ onPress }: { onPress: (k: string) => void }) {
@@ -208,7 +93,6 @@ export function AddTransactionScreen({
     if (initialTxn) return new Date(initialTxn.occurredDate);
     return getToday();
   });
-  const [showCal, setShowCal] = useState(false);
 
   // Ref map for category buttons — used to scroll the active one into view
   const catBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -272,9 +156,9 @@ export function AddTransactionScreen({
       ? '0'
       : `${Number(amount.split('.')[0]).toLocaleString('en-IN')}${amount.includes('.') ? `.${amount.split('.')[1]}` : ''}`;
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    setShowCal(false);
+  const handleNativeDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const d = parseDateInput(e.target.value);
+    if (d) setSelectedDate(d);
   };
 
   const doSave = () => {
@@ -289,12 +173,8 @@ export function AddTransactionScreen({
     });
   };
 
-  const chevStyle: CSSProperties = {
-    transform: showCal ? 'rotate(180deg)' : 'none',
-    transition: 'transform 200ms',
-  };
-
   const sheetHandle = !asPage ? <div className="sheet-handle" /> : null;
+  const dateMaxStr = toDateInputValue(getToday());
 
   const formScroll = (
     <>
@@ -341,7 +221,7 @@ export function AddTransactionScreen({
         style={{
           padding: '20px 24px 14px',
           textAlign: 'center',
-          borderBottom: showCal ? 'none' : '1px solid #F5F5F8',
+          borderBottom: '1px solid #F5F5F8',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3 }}>
@@ -364,31 +244,41 @@ export function AddTransactionScreen({
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowCal((v) => !v)}
+        <label
           style={{
             marginTop: 10,
+            position: 'relative',
             display: 'inline-flex', alignItems: 'center', gap: 5,
             padding: '6px 13px', borderRadius: 999,
-            background: showCal ? heroColor : '#F4F5F7',
-            color: showCal ? '#fff' : '#6B6B80',
-            border: 'none', cursor: 'pointer',
+            background: '#F4F5F7',
+            color: '#6B6B80',
+            border: 'none', cursor: busy ? 'default' : 'pointer',
             fontSize: 13, fontWeight: 600,
-            transition: 'background 180ms, color 180ms',
+            verticalAlign: 'middle',
           }}
         >
           <ICalendar size={13} stroke={2} />
           {dateLabel}
-          <IChevDown size={12} style={chevStyle} />
-        </button>
+          <input
+            type="date"
+            aria-label="Transaction date"
+            value={toDateInputValue(selectedDate)}
+            max={dateMaxStr}
+            min="1970-01-01"
+            onChange={handleNativeDateChange}
+            disabled={busy}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              opacity: 0,
+              cursor: busy ? 'default' : 'pointer',
+              WebkitAppearance: 'none',
+            }}
+          />
+        </label>
       </div>
-
-      {showCal && (
-        <div style={{ borderBottom: '1px solid #F5F5F8' }}>
-          <Calendar selected={selectedDate} onSelect={handleDateSelect} heroColor={heroColor} />
-        </div>
-      )}
 
       <div className="cat-strip" style={{ borderBottom: '1px solid #F5F5F8' }}>
         {cats.map((c) => {
@@ -430,7 +320,7 @@ export function AddTransactionScreen({
       <div
         style={{
           padding: '10px 16px',
-          borderBottom: asPage && !showCal ? 'none' : '1px solid #F5F5F8',
+          borderBottom: asPage ? 'none' : '1px solid #F5F5F8',
         }}
       >
         <input
@@ -448,11 +338,11 @@ export function AddTransactionScreen({
     </>
   );
 
-  const keypadBlock = !showCal ? (
+  const keypadBlock = (
     <div style={{ opacity: busy ? 0.45 : 1, pointerEvents: busy ? 'none' : 'auto' }}>
       <Keypad onPress={press} />
     </div>
-  ) : null;
+  );
 
   const actionsRow = (
     <div

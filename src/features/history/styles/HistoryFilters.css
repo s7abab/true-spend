@@ -1,0 +1,395 @@
+/* History search + filter sheet — layout and form controls tuned for cross-browser behavior */
+
+.history-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  margin: 12px 16px 0;
+  min-width: 0;
+}
+
+.history-toolbar__search-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.history-toolbar__search-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #acacb8;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+
+.history-toolbar__search-icon svg {
+  display: block;
+}
+
+.history-toolbar__search-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 42px;
+  margin: 0;
+  padding: 0 14px 0 38px;
+  border: 1px solid #ebebf0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 400;
+  line-height: 1.25;
+  color: #0f0f12;
+  background: #fff;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.history-toolbar__search-input::placeholder {
+  color: #acacb8;
+  opacity: 1;
+}
+
+.history-toolbar__search-input::-webkit-search-decoration,
+.history-toolbar__search-input::-webkit-search-cancel-button {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.history-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px 0;
+}
+
+/* ── Filter sheet backdrop ── */
+/* Above .bottom-nav (z-index 30); below toast (~200). Portal to body avoids transformed tab content clipping fixed layers. */
+.overlay.add-sheet-overlay.history-filter-backdrop {
+  z-index: 100;
+}
+
+.history-filter-backdrop {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* Helps cover the viewport when dynamic toolbars resize (where supported) */
+@supports (min-height: 100dvh) {
+  .history-filter-backdrop {
+    min-height: 100dvh;
+  }
+}
+
+/* ── Bottom sheet shell: outer flex; inner scroll; footer pinned ── */
+.sheet.history-filter-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: 94vh;
+  max-height: 94dvh;
+  overflow: hidden;
+  padding-bottom: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.history-filter-sheet__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.history-filter-sheet__footer {
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #f5f5f8;
+  background: #fff;
+}
+
+/* ── Header ── */
+.history-filter-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 8px;
+  flex-shrink: 0;
+}
+
+.history-filter-header__close {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f4f5f7;
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: #6b6b80;
+  flex-shrink: 0;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.history-filter-header__close:focus-visible {
+  outline: 2px solid #0f0f12;
+  outline-offset: 2px;
+}
+
+.history-filter-header__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-filter-header__title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.history-filter-header__subtitle {
+  font-size: 12px;
+  color: #acacb8;
+  margin: 2px 0 0;
+}
+
+/* ── Section blocks ── */
+.history-filter-section {
+  padding: 12px 16px 0;
+}
+
+.history-filter-section:first-of-type {
+  padding-top: 4px;
+}
+
+.history-filter-section__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #acacb8;
+  margin-bottom: 8px;
+}
+
+.history-filter-two-col {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.history-filter-field {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.history-filter-field span {
+  font-size: 12px;
+  color: #6b6b80;
+  font-weight: 600;
+}
+
+/* Native date picker: 16px+ avoids unwanted zoom on iOS Safari */
+.history-filter-date-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid #e8e8ef;
+  font-size: 16px;
+  line-height: 1.25;
+  font-family: inherit;
+  color: #0f0f12;
+  background: #fff;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.history-filter-date-input::-webkit-datetime-edit {
+  padding: 0;
+}
+
+.history-filter-amount-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  line-height: 1.25;
+  font-family: inherit;
+  color: #0f0f12;
+  background: #f4f5f7;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.history-filter-date-input:focus-visible,
+.history-filter-amount-input:focus-visible,
+.history-toolbar__search-input:focus-visible {
+  outline: 2px solid rgba(15, 15, 18, 0.25);
+  outline-offset: 1px;
+}
+
+.history-filter-range-error {
+  font-size: 12px;
+  color: #ff4d6d;
+  margin-top: 8px;
+}
+
+/* ── Kind segment (calc-based thumb avoids subpixel flex bugs) ── */
+.history-filter-kind-seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  background: #f0f0f5;
+  border-radius: 10px;
+  padding: 3px;
+}
+
+.history-filter-kind-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  bottom: 3px;
+  width: calc((100% - 6px) / 3);
+  box-sizing: border-box;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform: translateX(calc(var(--seg-i, 0) * 100%));
+}
+
+.history-filter-kind-btn {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 7px 8px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  white-space: nowrap;
+  text-align: center;
+  color: #acacb8;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.history-filter-kind-btn--active {
+  color: #0f0f12;
+}
+
+.history-filter-kind-btn:focus-visible {
+  outline: 2px solid #0f0f12;
+  outline-offset: 2px;
+}
+
+/* ── Category quick chips ── */
+.history-filter-cat-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.history-filter-cat-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.history-filter-cat-chip--idle {
+  background: #f4f5f7;
+  color: #0f0f12;
+}
+
+.history-filter-cat-chip--active {
+  background: #0f0f12;
+  color: #fff;
+}
+
+.history-filter-cat-chip:focus-visible {
+  outline: 2px solid #0f0f12;
+  outline-offset: 2px;
+}
+
+.history-filter-cat-strip {
+  margin-top: 12px;
+  border-bottom: none;
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 4px;
+}
+
+/* Footer buttons */
+.history-filter-btn-secondary,
+.history-filter-btn-primary {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 48px;
+  margin: 0;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.history-filter-btn-secondary {
+  background: #f4f5f7;
+  color: #0f0f12;
+}
+
+.history-filter-btn-primary {
+  background: #0f0f12;
+  color: #fff;
+  font-weight: 700;
+}
+
+.history-filter-btn-secondary:focus-visible,
+.history-filter-btn-primary:focus-visible {
+  outline: 2px solid #0f0f12;
+  outline-offset: 2px;
+}
+
+.history-filter-btn-primary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #0f0f12;
+}
