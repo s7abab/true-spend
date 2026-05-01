@@ -127,7 +127,7 @@ export function HomeScreen({
       <div className="week-card">
         <div className="row-between" style={{ marginBottom: 14 }}>
           <div>
-            <div style={{ fontSize: 13, color: '#ACACB8', fontWeight: 500 }}>This week</div>
+            <div style={{ fontSize: 13, color: '#ACACB8', fontWeight: 500 }}>This week spent</div>
             <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, marginTop: 2 }}>
               {formatMoney(weekTotal, currency)}
             </div>
@@ -172,7 +172,7 @@ export function HomeScreen({
               />
               <Tooltip
                 cursor={{ fill: 'rgba(15,15,18,0.03)' }}
-                formatter={(value) => [formatMoney(Number(value ?? 0), currency), 'Spent']}
+                formatter={(value) => [formatMoney(Number(value ?? 0), currency), 'Expense']}
                 contentStyle={{
                   border: 'none',
                   borderRadius: 10,
