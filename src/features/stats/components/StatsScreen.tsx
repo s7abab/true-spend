@@ -122,10 +122,11 @@ export function StatsScreen({
 }: StatsScreenProps) {
   const [period, setPeriod] = useState<PeriodId>('monthly');
   const [offset, setOffset] = useState(0);
-  const [reportKind, setReportKind] = useState<ReportKind>('expense');
+  // Default to "All" so the first chip is pre-selected on load
+  const [reportKind, setReportKind] = useState<ReportKind>('all');
   const [reportTxnFilter, setReportTxnFilter] = useState<HistoryFilterFields>(() => ({
     ...defaultHistoryListFilter(),
-    kind: 'expense',
+    kind: 'all',
   }));
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -325,7 +326,7 @@ export function StatsScreen({
             className="search-input"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search categories…"
+            placeholder="Filter categories…"
           />
         </div>
         <button
@@ -570,7 +571,7 @@ export function StatsScreen({
               <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, marginTop: 2, color: '#0F0F12' }}>
                 {formatMoney(breakdownTotal, currency)}
               </div>
-              <div style={{ fontSize: 10, color: '#ACACB8', marginTop: 4 }}>Tap for list</div>
+              <div style={{ fontSize: 12, color: '#6B6B80', marginTop: 4 }}>Tap for list</div>
             </button>
           </div>
         </div>

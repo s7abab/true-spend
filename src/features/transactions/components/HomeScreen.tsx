@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { IArrowDown, IArrowUp, ICTrend, IPlus, CatIcon } from '@/shared/components/Icons';
+import { IArrowDown, IArrowUp, ICTrend, ICalendar } from '@/shared/components/Icons';
+import { TxnRow } from '@/shared/components/TxnRow';
 import { CountUp } from '@/shared/components/CountUp';
 import { formatMoney } from '@/utils/money';
 import { weekOverWeekLabel, todayIndexInCurrentWeek } from '@/utils/spending';
@@ -7,53 +8,10 @@ import type { CategoryRow } from '@/features/categories/types';
 import type { TransactionKind } from '@/types/ledger';
 import type { MappedTxn } from '@/utils/txnMap';
 
-const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+// Two-char labels so Tue/Thu and Sat/Sun are distinguishable
+const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 type ResolveCat = (id: string | null, kind: TransactionKind | string | undefined) => CategoryRow;
-
-function TxnRow({
-  txn,
-  resolveCat,
-  currency,
-  onPress,
-}: {
-  txn: MappedTxn;
-  resolveCat: ResolveCat;
-  currency: string;
-  onPress?: () => void;
-}) {
-  const cat = resolveCat(txn.cat, txn.kind);
-  const isInc = txn.kind === 'income';
-  const amt = formatMoney(txn.amount, currency);
-  const body = (
-    <>
-      <div className="txn-icon" style={{ background: `${cat.tint}18`, color: cat.tint }}>
-        <CatIcon cat={cat} size={44} radius={14} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          className="txn-name"
-          style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-        >
-          {txn.title}
-        </div>
-        <div className="txn-time">{txn.time}</div>
-      </div>
-      <div className="txn-amount" style={{ color: isInc ? '#22A06B' : '#0F0F12' }}>
-        {isInc ? '+' : '−'}
-        {amt}
-      </div>
-    </>
-  );
-  if (onPress) {
-    return (
-      <button type="button" className="txn-row txn-row-btn" onClick={onPress} aria-label={`Edit ${txn.title}`}>
-        {body}
-      </button>
-    );
-  }
-  return <div className="txn-row">{body}</div>;
-}
 
 export type HomeScreenProps = {
   income: number;
@@ -116,38 +74,42 @@ export function HomeScreen({
           }}
         >
           <div className="balance-label">Total Balance</div>
+          {/* Month badge — calendar icon so it's clearly informational, not a button */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 5,
+              gap: 4,
               fontSize: 12,
               color: 'rgba(255,255,255,0.5)',
               fontWeight: 600,
             }}
           >
-            <IPlus size={12} stroke={2.5} /> {monthShort}
+            <ICalendar size={12} stroke={2} />
+            {monthShort}
           </div>
         </div>
         <div className="balance-amount" style={{ position: 'relative', zIndex: 1 }}>
           <CountUp value={balance} currency={currency} />
         </div>
         <div className="balance-pills">
-          <div className="balance-pill">
-            <div className="balance-pill-icon">
-              <IArrowDown size={14} stroke={2.2} />
-            </div>
-            <div>
-              <div className="balance-pill-label">Income</div>
-              <div className="balance-pill-value">{formatMoney(income, currency)}</div>
-            </div>
-          </div>
+          {/* Income: arrow pointing UP (money coming in) */}
           <div className="balance-pill">
             <div className="balance-pill-icon">
               <IArrowUp size={14} stroke={2.2} />
             </div>
             <div>
-              <div className="balance-pill-label">Spent</div>
+              <div className="balance-pill-label">Income · all time</div>
+              <div className="balance-pill-value">{formatMoney(income, currency)}</div>
+            </div>
+          </div>
+          {/* Spent: arrow pointing DOWN (money going out) */}
+          <div className="balance-pill">
+            <div className="balance-pill-icon">
+              <IArrowDown size={14} stroke={2.2} />
+            </div>
+            <div>
+              <div className="balance-pill-label">Spent · all time</div>
               <div className="balance-pill-value">{formatMoney(expense, currency)}</div>
             </div>
           </div>
@@ -239,15 +201,29 @@ export function HomeScreen({
         </div>
       </div>
       <div style={{ margin: '0 16px', background: '#fff', borderRadius: 20, overflow: 'hidden' }}>
-        {recentTxns.map((t) => (
-          <TxnRow
-            key={t.id}
-            txn={t}
-            resolveCat={resolveCat}
-            currency={currency}
-            onPress={onTxnPress ? () => onTxnPress(t) : undefined}
-          />
-        ))}
+        {recentTxns.length === 0 ? (
+          <div
+            style={{
+              padding: '36px 16px',
+              textAlign: 'center',
+              color: '#ACACB8',
+              fontSize: 14,
+              lineHeight: 1.5,
+            }}
+          >
+            No transactions yet — tap + to add your first
+          </div>
+        ) : (
+          recentTxns.map((t) => (
+            <TxnRow
+              key={t.id}
+              txn={t}
+              resolveCat={resolveCat}
+              currency={currency}
+              onPress={onTxnPress ? () => onTxnPress(t) : undefined}
+            />
+          ))
+        )}
       </div>
 
       <div style={{ height: 20 }} />

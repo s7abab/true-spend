@@ -27,13 +27,7 @@ function downloadJson(filename: string, data: unknown): void {
 }
 
 function AvatarCircle({ url, initials, size }: { url: string | null; initials: string; size: number }) {
-  const s: CSSProperties = {
-    width: size,
-    height: size,
-    borderRadius: 999,
-    flexShrink: 0,
-    overflow: 'hidden',
-  };
+  const s: CSSProperties = { width: size, height: size, borderRadius: 999, flexShrink: 0, overflow: 'hidden' };
   if (url) {
     return (
       <img
@@ -61,10 +55,30 @@ function AvatarCircle({ url, initials, size }: { url: string | null; initials: s
   );
 }
 
+function SoonBadge() {
+  return (
+    <span
+      style={{
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: 0.3,
+        color: '#6B6B80',
+        background: '#EBEBF0',
+        borderRadius: 6,
+        padding: '2px 6px',
+        flexShrink: 0,
+      }}
+    >
+      SOON
+    </span>
+  );
+}
+
 type SettingsItem = {
   label: string;
   sub?: string;
   danger?: boolean;
+  soon?: boolean;
   onClick?: () => void | Promise<void>;
 };
 
@@ -74,6 +88,7 @@ type ProfileScreenProps = {
   updateProfile: (patch: Partial<ProfileRow>) => Promise<{ data: unknown; error: unknown }>;
   lists: CategoryLists;
   onExportTransactions: () => Promise<MappedTxn[]>;
+  onGoToCategories?: () => void;
 };
 
 export function ProfileScreen({
@@ -82,6 +97,7 @@ export function ProfileScreen({
   updateProfile,
   lists,
   onExportTransactions,
+  onGoToCategories,
 }: ProfileScreenProps) {
   const { signOut } = useAuth();
   const [exporting, setExporting] = useState(false);
@@ -128,31 +144,43 @@ export function ProfileScreen({
     () =>
       [
         {
+          title: 'Manage',
           items: [
-            { label: 'Budgets', sub: 'Set monthly goals' },
-            { label: 'Recurring', sub: '0 active' },
+            {
+              label: 'Categories',
+              sub: 'Edit expense & income categories',
+              onClick: onGoToCategories ? () => onGoToCategories() : undefined,
+            },
           ] satisfies SettingsItem[],
         },
         {
+          title: 'Coming soon',
           items: [
-            { label: 'Notifications', sub: 'On' },
+            { label: 'Budgets', sub: 'Set monthly goals', soon: true },
+            { label: 'Recurring', sub: '0 active', soon: true },
+          ] satisfies SettingsItem[],
+        },
+        {
+          title: 'Preferences',
+          items: [
+            { label: 'Notifications', sub: 'Coming soon', soon: true },
             {
               label: 'Currency',
               sub: `${currency} · tap to change`,
               onClick: () => void cycleCurrency(),
             },
-            { label: 'Appearance', sub: 'Light' },
+            { label: 'Appearance', sub: 'Coming soon', soon: true },
           ] satisfies SettingsItem[],
         },
         {
+          title: 'Data',
           items: [
             { label: exporting ? 'Exporting…' : 'Export data', onClick: () => void exportData() },
-            { label: 'Help & support' },
             { label: 'Sign out', danger: true, onClick: () => void signOut() },
           ] satisfies SettingsItem[],
         },
-      ] as { items: SettingsItem[] }[],
-    [currency, cycleCurrency, exportData, exporting, signOut],
+      ] as { title: string; items: SettingsItem[] }[],
+    [currency, cycleCurrency, exportData, exporting, signOut, onGoToCategories],
   );
 
   return (
@@ -172,24 +200,16 @@ export function ProfileScreen({
         <div style={{ minWidth: 0 }}>
           <div
             style={{
-              fontSize: 17,
-              fontWeight: 700,
-              letterSpacing: -0.3,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              fontSize: 17, fontWeight: 700, letterSpacing: -0.3,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}
           >
             {fullName}
           </div>
           <div
             style={{
-              fontSize: 13,
-              color: '#ACACB8',
-              marginTop: 3,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              fontSize: 13, color: '#ACACB8', marginTop: 3,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}
           >
             {email}
@@ -200,7 +220,7 @@ export function ProfileScreen({
       {groups.map((group, gi) => (
         <div key={gi} className="settings-group">
           {group.items.map((it, i) => {
-            const interactive = typeof it.onClick === 'function';
+            const interactive = typeof it.onClick === 'function' && !it.soon;
             return (
               <div
                 key={i}
@@ -220,10 +240,21 @@ export function ProfileScreen({
                 tabIndex={interactive ? 0 : undefined}
                 style={interactive ? { cursor: 'pointer' } : undefined}
               >
-                <span style={{ fontSize: 15, fontWeight: 500, color: it.danger ? '#FF4D6D' : '#0F0F12' }}>
+                <span
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 500,
+                    color: it.soon ? '#ACACB8' : it.danger ? '#FF4D6D' : '#0F0F12',
+                  }}
+                >
                   {it.label}
                 </span>
-                {it.sub ? <span style={{ fontSize: 13, color: '#ACACB8' }}>{it.sub}</span> : null}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {it.soon && <SoonBadge />}
+                  {it.sub && !it.soon ? (
+                    <span style={{ fontSize: 13, color: '#ACACB8' }}>{it.sub}</span>
+                  ) : null}
+                </div>
               </div>
             );
           })}

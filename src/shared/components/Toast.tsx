@@ -1,13 +1,27 @@
+import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ICheck } from '@/shared/components/Icons';
 import { formatMoney } from '@/utils/money';
 
 const CONFETTI_COLORS = ['#7C5CFF', '#22A06B', '#FF7A59', '#FFD23F', '#FF5C8A'];
 
+type ConfettiPiece = { tx: string; ty: string; r: string; duration: number };
+
 function Confetti() {
+  // Positions computed once on mount via ref — stable across re-renders and React Strict Mode
+  const pieces = useRef<ConfettiPiece[]>([]);
+  if (pieces.current.length === 0) {
+    pieces.current = Array.from({ length: 14 }, () => ({
+      tx: `${Math.random() * 240 - 120}px`,
+      ty: `${-(Math.random() * 180 + 60)}px`,
+      r: `${Math.random() * 720 - 360}deg`,
+      duration: 800 + Math.random() * 600,
+    }));
+  }
+
   return (
-    <div style={{ position: 'fixed', bottom: 100, left: '50%', pointerEvents: 'none', zIndex: 100 }}>
-      {Array.from({ length: 14 }, (_, i) => (
+    <div style={{ position: 'fixed', bottom: 100, left: '50%', pointerEvents: 'none', zIndex: 201 }}>
+      {pieces.current.map((p, i) => (
         <div
           key={i}
           style={{
@@ -16,10 +30,10 @@ function Confetti() {
             height: 12,
             background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
             borderRadius: 2,
-            ['--tx' as string]: `${Math.random() * 240 - 120}px`,
-            ['--ty' as string]: `${-(Math.random() * 180 + 60)}px`,
-            ['--r' as string]: `${Math.random() * 720 - 360}deg`,
-            animation: `confettiBurst ${800 + Math.random() * 600}ms ease-out forwards`,
+            ['--tx' as string]: p.tx,
+            ['--ty' as string]: p.ty,
+            ['--r' as string]: p.r,
+            animation: `confettiBurst ${p.duration}ms ease-out forwards`,
           }}
         />
       ))}
@@ -54,7 +68,7 @@ export function Toast({ toast, accent, currency = 'INR' }: ToastProps) {
         right: 0,
         display: 'flex',
         justifyContent: 'center',
-        zIndex: 99,
+        zIndex: 200,
         pointerEvents: 'none',
         padding: '0 16px',
       }}

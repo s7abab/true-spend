@@ -100,7 +100,7 @@ export function SignInScreen() {
           animate="show"
           style={{ fontSize: 14, color: '#6B6B80', marginTop: 8, lineHeight: 1.45 }}
         >
-          Track every rupee. Spend with intent.
+          Track every spend. Stay in control.
         </motion.div>
       </div>
 

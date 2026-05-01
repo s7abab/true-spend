@@ -15,7 +15,7 @@ import { useAuth } from '@/features/auth/components/AuthContext';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 import { useCategories } from '@/features/categories/hooks/useCategories';
 import { useTransactions } from '@/features/transactions/hooks/useTransactions';
-import { IHome, IChart, IList, ITag, IPlus } from '@/shared/components/Icons';
+import { IHome, IChart, IList, IUser, IPlus, IChevLeft } from '@/shared/components/Icons';
 import type { ProfileRow } from '@/features/profile/types';
 import type { User } from '@supabase/supabase-js';
 import '@/features/shell/styles/App.css';
@@ -25,12 +25,13 @@ const ACCENT = '#0F0F12';
 
 type TabDef = { id: TabId; label: string; Icon: ComponentType<{ size?: number; stroke?: number }> };
 
+// Categories is no longer a tab — it lives under Profile as a sub-screen
 const TABS: (TabDef | null)[] = [
   { id: 'home', label: 'Home', Icon: IHome },
   { id: 'stats', label: 'Report', Icon: IChart },
-  null,
+  null, // FAB
   { id: 'history', label: 'History', Icon: IList },
-  { id: 'categories', label: 'Categories', Icon: ITag },
+  { id: 'profile', label: 'Profile', Icon: IUser },
 ];
 
 function firstName(profile: ProfileRow | null | undefined, user: User | null | undefined): string {
@@ -49,30 +50,6 @@ function greetingLine(): string {
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
   return 'Good evening';
-}
-
-function topBarTitle(tab: TabId, profile: ProfileRow | null | undefined, user: User | null | undefined) {
-  switch (tab) {
-    case 'home':
-      return (
-        <div>
-          <div style={{ fontSize: 12, color: '#ACACB8', fontWeight: 500 }}>{greetingLine()}</div>
-          <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.3, marginTop: 2 }}>
-            {firstName(profile, user)}
-          </div>
-        </div>
-      );
-    case 'stats':
-      return <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Report</div>;
-    case 'history':
-      return <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>History</div>;
-    case 'categories':
-      return <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Categories</div>;
-    case 'profile':
-      return <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Profile</div>;
-    default:
-      return null;
-  }
 }
 
 function Splash() {
@@ -274,7 +251,7 @@ function AuthedApp({ user }: { user: User | null }) {
         ? 'Still loading categories…'
         : categoriesError
           ? 'Fix the data connection, then try again.'
-          : 'Add at least one category first (Categories tab).';
+          : 'Add a category first (Profile → Categories).';
       setToast({ id: Date.now(), kind: 'error', message: msg });
       setTimeout(() => setToast(null), 3200);
       return;
@@ -332,16 +309,56 @@ function AuthedApp({ user }: { user: User | null }) {
         updateProfile={updateProfile}
         lists={lists}
         onExportTransactions={exportAllTransactions}
+        onGoToCategories={() => setTab('categories')}
       />
     ),
   }[tab];
+
+  // Categories is a sub-screen of Profile — highlight Profile tab and show a back button
+  const effectiveActiveTab: TabId = tab === 'categories' ? 'profile' : tab;
+
+  const topBarContent =
+    tab === 'categories' ? (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button
+          type="button"
+          onClick={() => setTab('profile')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 3,
+            border: 'none', background: 'none', cursor: 'pointer',
+            color: '#ACACB8', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+            padding: '4px 0',
+          }}
+        >
+          <IChevLeft size={16} />
+          Profile
+        </button>
+        <span style={{ color: '#D1D1DB', fontSize: 13 }}>/</span>
+        <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.3, color: '#0F0F12' }}>
+          Categories
+        </span>
+      </div>
+    ) : tab === 'home' ? (
+      <div>
+        <div style={{ fontSize: 12, color: '#ACACB8', fontWeight: 500 }}>{greetingLine()}</div>
+        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.3, marginTop: 2 }}>
+          {firstName(profile, user)}
+        </div>
+      </div>
+    ) : tab === 'stats' ? (
+      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Report</div>
+    ) : tab === 'history' ? (
+      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>History</div>
+    ) : tab === 'profile' ? (
+      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Profile</div>
+    ) : null;
 
   return (
     <div className="app-shell">
       <div className="page-scroll">
         {!adding && (
           <AppTopBar onProfile={() => setTab('profile')} profile={profile} user={user}>
-            {topBarTitle(tab, profile, user)}
+            {topBarContent}
           </AppTopBar>
         )}
         <DataErrorBanner message={combinedError} onRetry={handleRetryData} busy={retrying} />
@@ -390,7 +407,7 @@ function AuthedApp({ user }: { user: User | null }) {
                 </div>
               );
             }
-            const active = tab === t.id;
+            const active = effectiveActiveTab === t.id;
             const Icon = t.Icon;
             return (
               <button

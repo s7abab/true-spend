@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useLayoutEffect, type CSSProperties } from 'react';
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import { ICheck, IClose, ICalendar, IChevDown, IChevLeft, IChevRight, IPlus, ITrash, ICON_MAP } from '@/shared/components/Icons';
 import { formatDateLabel } from '@/utils/dateLabel';
@@ -8,22 +8,16 @@ import type { TransactionKind } from '@/types/ledger';
 import type { MappedTxn } from '@/utils/txnMap';
 
 const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-const TODAY = new Date();
-TODAY.setHours(0, 0, 0, 0);
+
+function getToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
 type CalendarProps = {
   selected: Date;
@@ -32,23 +26,25 @@ type CalendarProps = {
 };
 
 function Calendar({ selected, onSelect, heroColor }: CalendarProps) {
+  // Compute today fresh each time Calendar mounts so it stays accurate across midnight
+  const today = useMemo(getToday, []);
+
   const [viewYear, setViewYear] = useState(selected.getFullYear());
   const [viewMonth, setViewMonth] = useState(selected.getMonth());
 
   const prevMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear((y) => y - 1);
-    } else setViewMonth((m) => m - 1);
+    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
+    else setViewMonth((m) => m - 1);
   };
   const nextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear((y) => y + 1);
-    } else setViewMonth((m) => m + 1);
+    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
+    else setViewMonth((m) => m + 1);
   };
 
-  const isNextDisabled = false;
+  // Prevent navigating past the current month
+  const isNextDisabled =
+    viewYear > today.getFullYear() ||
+    (viewYear === today.getFullYear() && viewMonth >= today.getMonth());
 
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -57,7 +53,7 @@ function Calendar({ selected, onSelect, heroColor }: CalendarProps) {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   const isToday = (d: number) =>
-    d === TODAY.getDate() && viewMonth === TODAY.getMonth() && viewYear === TODAY.getFullYear();
+    d === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
   const isSelected = (d: number) =>
     d === selected.getDate() && viewMonth === selected.getMonth() && viewYear === selected.getFullYear();
 
@@ -68,15 +64,8 @@ function Calendar({ selected, onSelect, heroColor }: CalendarProps) {
           type="button"
           onClick={prevMonth}
           style={{
-            width: 36,
-            height: 36,
-            border: 'none',
-            background: '#F4F5F7',
-            borderRadius: 10,
-            display: 'grid',
-            placeItems: 'center',
-            cursor: 'pointer',
-            color: '#0F0F12',
+            width: 36, height: 36, border: 'none', background: '#F4F5F7',
+            borderRadius: 10, display: 'grid', placeItems: 'center', cursor: 'pointer', color: '#0F0F12',
           }}
         >
           <IChevLeft size={16} />
@@ -89,16 +78,10 @@ function Calendar({ selected, onSelect, heroColor }: CalendarProps) {
           onClick={nextMonth}
           disabled={isNextDisabled}
           style={{
-            width: 36,
-            height: 36,
-            border: 'none',
-            background: '#F4F5F7',
-            borderRadius: 10,
-            display: 'grid',
-            placeItems: 'center',
+            width: 36, height: 36, border: 'none', background: '#F4F5F7',
+            borderRadius: 10, display: 'grid', placeItems: 'center',
             cursor: isNextDisabled ? 'default' : 'pointer',
-            color: '#0F0F12',
-            opacity: isNextDisabled ? 0.3 : 1,
+            color: '#0F0F12', opacity: isNextDisabled ? 0.3 : 1,
           }}
         >
           <IChevRight size={16} />
@@ -109,14 +92,7 @@ function Calendar({ selected, onSelect, heroColor }: CalendarProps) {
         {DAY_NAMES.map((d) => (
           <div
             key={d}
-            style={{
-              textAlign: 'center',
-              fontSize: 11,
-              fontWeight: 700,
-              color: '#ACACB8',
-              padding: '4px 0',
-              letterSpacing: 0.2,
-            }}
+            style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#ACACB8', padding: '4px 0', letterSpacing: 0.2 }}
           >
             {d}
           </div>
@@ -127,27 +103,20 @@ function Calendar({ selected, onSelect, heroColor }: CalendarProps) {
         {cells.map((day, i) => {
           if (!day) return <div key={`e${i}`} />;
           const sel = isSelected(day);
-          const today = isToday(day);
+          const tod = isToday(day);
           return (
             <button
               key={day}
               type="button"
               onClick={() => onSelect(new Date(viewYear, viewMonth, day))}
               style={{
-                width: '100%',
-                aspectRatio: '1',
-                border: 'none',
-                borderRadius: 999,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: 14,
-                fontWeight: sel ? 700 : today ? 600 : 400,
+                width: '100%', aspectRatio: '1', border: 'none', borderRadius: 999,
+                cursor: 'pointer', fontFamily: 'inherit', fontSize: 14,
+                fontWeight: sel ? 700 : tod ? 600 : 400,
                 background: sel ? heroColor : 'transparent',
-                color: sel ? '#fff' : today ? heroColor : '#0F0F12',
-                display: 'grid',
-                placeItems: 'center',
-                transition: 'background 140ms',
-                outline: today && !sel ? `2px solid ${heroColor}` : 'none',
+                color: sel ? '#fff' : tod ? heroColor : '#0F0F12',
+                display: 'grid', placeItems: 'center', transition: 'background 140ms',
+                outline: tod && !sel ? `2px solid ${heroColor}` : 'none',
                 outlineOffset: '-2px',
               }}
             >
@@ -201,7 +170,6 @@ type AddSheetProps = {
   categoriesIncome: CategoryRow[];
   onClose: () => void;
   onSave: (t: AddSheetSavePayload) => void;
-  /** When set, sheet opens in edit mode for this transaction. */
   initialTxn?: MappedTxn | null;
   onDelete?: () => void;
   deleting?: boolean;
@@ -234,18 +202,26 @@ export function AddSheet({
   const [note, setNote] = useState(() =>
     initialTxn ? (initialTxn.note || initialTxn.title || '') : '',
   );
-  const [selectedDate, setSelectedDate] = useState(() =>
-    initialTxn ? new Date(initialTxn.occurredDate) : new Date(TODAY),
-  );
+  const [selectedDate, setSelectedDate] = useState(() => {
+    if (initialTxn) return new Date(initialTxn.occurredDate);
+    return getToday();
+  });
   const [showCal, setShowCal] = useState(false);
 
+  // Ref map for category buttons — used to scroll the active one into view
+  const catBtnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
   useEffect(() => {
-    const prev = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
-    return () => {
-      document.documentElement.style.overflow = prev;
-    };
+    return () => { document.documentElement.style.overflow = ''; };
   }, []);
+
+  // Scroll selected category into view whenever it changes
+  useEffect(() => {
+    if (!catId) return;
+    const btn = catBtnRefs.current.get(catId);
+    btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [catId]);
 
   const hasExp = categoriesExpense.length > 0;
   const hasInc = categoriesIncome.length > 0;
@@ -254,10 +230,7 @@ export function AddSheet({
     const list = kind === 'expense' ? categoriesExpense : categoriesIncome;
     const validId = catId != null && list.some((c) => c.id === catId);
     if (validId) return;
-    if (list.length > 0) {
-      setCatId(list[0]!.id);
-      return;
-    }
+    if (list.length > 0) { setCatId(list[0]!.id); return; }
     const next = initialKindAndCat(categoriesExpense, categoriesIncome);
     setKind(next.kind);
     setCatId(next.catId);
@@ -333,6 +306,13 @@ export function AddSheet({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+        // Swipe-to-dismiss: drag down past 120px or fast flick closes the sheet
+        drag={busy ? false : 'y'}
+        dragConstraints={{ top: 0 }}
+        dragElastic={{ top: 0, bottom: 0.4 }}
+        onDragEnd={(_, info) => {
+          if (!busy && (info.offset.y > 120 || info.velocity.y > 500)) onClose();
+        }}
       >
         <div className="sheet-handle" />
 
@@ -343,16 +323,9 @@ export function AddSheet({
             onClick={onClose}
             aria-label="Close"
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: '#F4F5F7',
-              border: 'none',
-              display: 'grid',
-              placeItems: 'center',
-              color: '#6B6B80',
-              flexShrink: 0,
-              opacity: busy ? 0.5 : 1,
+              width: 36, height: 36, borderRadius: 10, background: '#F4F5F7',
+              border: 'none', display: 'grid', placeItems: 'center',
+              color: '#6B6B80', flexShrink: 0, opacity: busy ? 0.5 : 1,
             }}
           >
             <IClose size={16} />
@@ -392,22 +365,15 @@ export function AddSheet({
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3 }}>
             <span
               style={{
-                fontSize: 24,
-                fontWeight: 600,
-                opacity: 0.35,
-                verticalAlign: 'top',
-                marginTop: 8,
-                display: 'inline-block',
+                fontSize: 24, fontWeight: 600, opacity: 0.35,
+                verticalAlign: 'top', marginTop: 8, display: 'inline-block',
               }}
             >
               {curSym}
             </span>
             <span
               style={{
-                fontSize: 52,
-                fontWeight: 700,
-                letterSpacing: -2,
-                lineHeight: 1,
+                fontSize: 52, fontWeight: 700, letterSpacing: -2, lineHeight: 1,
                 color: numAmount > 0 ? heroColor : '#D1D1DB',
                 transition: 'color 200ms',
               }}
@@ -421,17 +387,12 @@ export function AddSheet({
             onClick={() => setShowCal((v) => !v)}
             style={{
               marginTop: 10,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '6px 13px',
-              borderRadius: 999,
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '6px 13px', borderRadius: 999,
               background: showCal ? heroColor : '#F4F5F7',
               color: showCal ? '#fff' : '#6B6B80',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: 600,
+              border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: 600,
               transition: 'background 180ms, color 180ms',
             }}
           >
@@ -457,6 +418,10 @@ export function AddSheet({
                 type="button"
                 className="cat-btn"
                 disabled={busy}
+                ref={(el) => {
+                  if (el) catBtnRefs.current.set(c.id, el);
+                  else catBtnRefs.current.delete(c.id);
+                }}
                 onClick={() => setCatId(c.id)}
                 style={{
                   background: active ? c.tint : '#F4F5F7',
@@ -466,15 +431,10 @@ export function AddSheet({
               >
                 <span
                   style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 7,
-                    flexShrink: 0,
+                    width: 24, height: 24, borderRadius: 7, flexShrink: 0,
                     background: active ? 'rgba(255,255,255,0.2)' : `${c.tint}18`,
                     color: active ? '#fff' : c.tint,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
                   <IconCmp size={13} stroke={2.2} />
@@ -492,16 +452,9 @@ export function AddSheet({
             disabled={busy}
             placeholder="Add a note (optional)"
             style={{
-              width: '100%',
-              height: 40,
-              background: '#F4F5F7',
-              border: 'none',
-              borderRadius: 10,
-              padding: '0 14px',
-              fontSize: 14,
-              color: '#0F0F12',
-              outline: 'none',
-              fontFamily: 'inherit',
+              width: '100%', height: 40, background: '#F4F5F7',
+              border: 'none', borderRadius: 10, padding: '0 14px',
+              fontSize: 14, color: '#0F0F12', outline: 'none', fontFamily: 'inherit',
             }}
           />
         </div>
@@ -514,9 +467,7 @@ export function AddSheet({
 
         <div
           style={{
-            display: 'flex',
-            gap: 10,
-            alignItems: 'stretch',
+            display: 'flex', gap: 10, alignItems: 'stretch',
             padding: '10px 16px',
             paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
           }}
@@ -529,18 +480,11 @@ export function AddSheet({
               aria-label={deleting ? 'Deleting…' : 'Delete transaction'}
               title="Delete"
               style={{
-                flexShrink: 0,
-                width: 54,
-                height: 54,
-                borderRadius: 16,
-                border: 'none',
-                background: 'rgba(255, 77, 109, 0.1)',
-                color: '#D92D4A',
-                cursor: busy ? 'default' : 'pointer',
-                display: 'grid',
-                placeItems: 'center',
-                fontFamily: 'inherit',
-                opacity: busy ? 0.55 : 1,
+                flexShrink: 0, width: 54, height: 54, borderRadius: 16,
+                border: 'none', background: 'rgba(255, 77, 109, 0.1)',
+                color: '#D92D4A', cursor: busy ? 'default' : 'pointer',
+                display: 'grid', placeItems: 'center',
+                fontFamily: 'inherit', opacity: busy ? 0.55 : 1,
               }}
             >
               <ITrash size={20} stroke={2} />
@@ -551,31 +495,18 @@ export function AddSheet({
             disabled={!canSave || busy}
             onClick={doSave}
             style={{
-              flex: 1,
-              minWidth: 0,
-              height: 54,
-              borderRadius: 16,
+              flex: 1, minWidth: 0, height: 54, borderRadius: 16,
               background: canSave && !busy ? heroColor : '#F0F0F5',
               color: canSave && !busy ? '#fff' : '#ACACB8',
-              border: 'none',
-              cursor: canSave && !busy ? 'pointer' : 'default',
-              fontSize: 17,
-              fontWeight: 700,
-              letterSpacing: -0.3,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
+              border: 'none', cursor: canSave && !busy ? 'pointer' : 'default',
+              fontSize: 17, fontWeight: 700, letterSpacing: -0.3,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               boxShadow: canSave && !busy ? `0 10px 24px -8px ${heroColor}99` : 'none',
               transition: 'background 200ms, box-shadow 200ms',
               fontFamily: 'inherit',
             }}
-            onPointerDown={(e) => {
-              if (canSave && !busy) e.currentTarget.style.transform = 'scale(0.98)';
-            }}
-            onPointerUp={(e) => {
-              e.currentTarget.style.transform = '';
-            }}
+            onPointerDown={(e) => { if (canSave && !busy) e.currentTarget.style.transform = 'scale(0.98)'; }}
+            onPointerUp={(e) => { e.currentTarget.style.transform = ''; }}
           >
             {isEdit ? <ICheck size={20} stroke={2.6} /> : <IPlus size={20} stroke={2.6} />}
             {saving ? 'Saving…' : isEdit ? 'Save changes' : `Add ${isExp ? 'expense' : 'income'}`}

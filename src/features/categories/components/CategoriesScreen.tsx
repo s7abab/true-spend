@@ -25,10 +25,14 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
   const [draftIcon, setDraftIcon] = useState('dots');
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('dots');
+  // confirmDeleteId: the id of the row showing the "Confirm delete?" prompt
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const rows = useMemo(() => (kind === 'expense' ? lists.expense : lists.income), [kind, lists]);
 
   const startEdit = (c: CategoryRow) => {
+    // Clear any pending delete confirmation when entering edit mode
+    setConfirmDeleteId(null);
     setEditingId(c.id);
     setDraft(c.label);
     setDraftIcon(sanitizeCategoryIcon(c.icon));
@@ -72,6 +76,7 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
             onClick={() => {
               setKind(k);
               cancelEdit();
+              setConfirmDeleteId(null);
             }}
             style={{ color: kind === k ? '#0F0F12' : '#ACACB8', textTransform: 'capitalize' }}
           >
@@ -85,12 +90,10 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
           {rows.map((c) => (
             <div
               key={c.id}
-              style={{
-                borderBottom: '1px solid #F5F5F8',
-                padding: '12px 14px',
-              }}
+              style={{ borderBottom: '1px solid #F5F5F8', padding: '12px 14px' }}
             >
               {editingId === c.id ? (
+                /* ── Edit mode ── */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <CategoryIconPicker value={draftIcon} onChange={setDraftIcon} activeTint={hero} />
                   <input
@@ -100,15 +103,9 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
                     autoFocus
                     placeholder="Name"
                     style={{
-                      width: '100%',
-                      height: 42,
-                      borderRadius: 10,
-                      border: 'none',
-                      background: '#F4F5F7',
-                      padding: '0 12px',
-                      fontSize: 15,
-                      outline: 'none',
-                      fontFamily: 'inherit',
+                      width: '100%', height: 42, borderRadius: 10, border: 'none',
+                      background: '#F4F5F7', padding: '0 12px', fontSize: 15,
+                      outline: 'none', fontFamily: 'inherit',
                     }}
                   />
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -116,14 +113,9 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
                       type="button"
                       onClick={cancelEdit}
                       style={{
-                        padding: '8px 14px',
-                        borderRadius: 10,
-                        border: 'none',
-                        background: '#F4F5F7',
-                        fontWeight: 600,
-                        fontSize: 13,
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
+                        padding: '8px 14px', borderRadius: 10, border: 'none',
+                        background: '#F4F5F7', fontWeight: 600, fontSize: 13,
+                        cursor: 'pointer', fontFamily: 'inherit',
                       }}
                     >
                       Cancel
@@ -133,13 +125,10 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
                       disabled={!draft.trim()}
                       onClick={() => void saveEdit()}
                       style={{
-                        padding: '8px 14px',
-                        borderRadius: 10,
-                        border: 'none',
+                        padding: '8px 14px', borderRadius: 10, border: 'none',
                         background: draft.trim() ? hero : '#E8E8EE',
                         color: draft.trim() ? '#fff' : '#ACACB8',
-                        fontWeight: 600,
-                        fontSize: 13,
+                        fontWeight: 600, fontSize: 13,
                         cursor: draft.trim() ? 'pointer' : 'default',
                         fontFamily: 'inherit',
                       }}
@@ -148,7 +137,42 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
                     </button>
                   </div>
                 </div>
+              ) : confirmDeleteId === c.id ? (
+                /* ── Delete confirmation ── */
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ flex: 1, fontSize: 14, fontWeight: 500, color: '#0F0F12' }}>
+                    Delete <strong>{c.label}</strong>?
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteId(null)}
+                    style={{
+                      padding: '7px 12px', borderRadius: 10, border: 'none',
+                      background: '#F4F5F7', fontWeight: 600, fontSize: 13,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setConfirmDeleteId(null);
+                      const { error } = await onRemove(kind, c.id);
+                      if (error) console.error('category delete failed', error);
+                    }}
+                    style={{
+                      padding: '7px 12px', borderRadius: 10, border: 'none',
+                      background: '#FF4D6D', color: '#fff',
+                      fontWeight: 600, fontSize: 13,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
               ) : (
+                /* ── Normal row ── */
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ flexShrink: 0 }}>
                     <CatIcon cat={c} size={40} radius={12} />
@@ -156,38 +180,27 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: -0.2 }}>{c.label}</div>
                   </div>
+                  {/* Hide Edit when another row is already open — prevents silent discard */}
+                  {!editingId && (
+                    <button
+                      type="button"
+                      onClick={() => startEdit(c)}
+                      style={{
+                        border: 'none', background: 'transparent', color: hero,
+                        fontWeight: 600, fontSize: 13, padding: '8px 4px',
+                        cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+                      }}
+                    >
+                      Edit
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => startEdit(c)}
+                    onClick={() => setConfirmDeleteId(c.id)}
                     style={{
-                      border: 'none',
-                      background: 'transparent',
-                      color: hero,
-                      fontWeight: 600,
-                      fontSize: 13,
-                      padding: '8px 4px',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      flexShrink: 0,
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const { error } = await onRemove(kind, c.id);
-                      if (error) console.error('category delete failed', error);
-                    }}
-                    style={{
-                      border: 'none',
-                      background: 'transparent',
-                      color: '#ACACB8',
-                      fontSize: 22,
-                      lineHeight: 1,
-                      padding: '4px 8px',
-                      cursor: 'pointer',
-                      flexShrink: 0,
+                      border: 'none', background: 'transparent', color: '#ACACB8',
+                      fontSize: 22, lineHeight: 1, padding: '4px 8px',
+                      cursor: 'pointer', flexShrink: 0,
                     }}
                     aria-label={`Delete ${c.label}`}
                   >
@@ -217,15 +230,9 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
             onKeyDown={(e) => e.key === 'Enter' && void addNew()}
             placeholder="Name"
             style={{
-              flex: 1,
-              height: 46,
-              borderRadius: 12,
-              border: 'none',
-              background: '#fff',
-              padding: '0 14px',
-              fontSize: 15,
-              outline: 'none',
-              fontFamily: 'inherit',
+              flex: 1, height: 46, borderRadius: 12, border: 'none',
+              background: '#fff', padding: '0 14px', fontSize: 15,
+              outline: 'none', fontFamily: 'inherit',
               boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
             }}
           />
@@ -234,17 +241,12 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
             disabled={!newName.trim()}
             onClick={() => void addNew()}
             style={{
-              height: 46,
-              padding: '0 20px',
-              borderRadius: 12,
-              border: 'none',
-              fontWeight: 700,
-              fontSize: 14,
+              height: 46, padding: '0 20px', borderRadius: 12, border: 'none',
+              fontWeight: 700, fontSize: 14,
               background: newName.trim() ? hero : '#E8E8EE',
               color: newName.trim() ? '#fff' : '#ACACB8',
               cursor: newName.trim() ? 'pointer' : 'default',
-              fontFamily: 'inherit',
-              flexShrink: 0,
+              fontFamily: 'inherit', flexShrink: 0,
             }}
           >
             Create
