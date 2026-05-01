@@ -34,6 +34,22 @@ export async function fetchExpenseByCategory(fromIso: string, toIsoExclusive: st
   return withSignal(q, opts.signal);
 }
 
+export async function fetchIncomeByCategory(fromIso: string, toIsoExclusive: string, opts: { signal?: AbortSignal } = {}) {
+  const q = supabase.rpc('transaction_income_by_category', {
+    p_from: fromIso,
+    p_to: toIsoExclusive,
+  });
+  return withSignal(q, opts.signal);
+}
+
+export async function fetchPeriodSummary(fromIso: string, toIsoExclusive: string, opts: { signal?: AbortSignal } = {}) {
+  const q = supabase.rpc('transaction_period_summary', {
+    p_from: fromIso,
+    p_to: toIsoExclusive,
+  });
+  return withSignal(q, opts.signal);
+}
+
 export async function listRecentTransactions(userId: string, limit = 5, opts: { signal?: AbortSignal } = {}) {
   const q = supabase
     .from('transactions')
@@ -52,6 +68,14 @@ export type FetchTransactionsPageOpts = {
   cursor: TxnPageCursor;
   kind: string;
   search: string;
+  /** Inclusive lower bound (timestamptz ISO). Null = no filter. */
+  fromIso?: string | null;
+  /** Exclusive upper bound (timestamptz ISO). Null = no filter. */
+  toIsoExclusive?: string | null;
+  categoryId?: string | null;
+  uncategorizedOnly?: boolean;
+  amountMin?: number | null;
+  amountMax?: number | null;
   signal?: AbortSignal;
 };
 
@@ -64,6 +88,12 @@ export async function fetchTransactionsPage(opts: FetchTransactionsPageOpts) {
     p_after_id: cur?.id ?? null,
     p_kind: opts.kind === 'all' ? 'all' : opts.kind || 'all',
     p_search: opts.search?.trim() ? opts.search.trim() : null,
+    p_from: opts.fromIso ?? null,
+    p_to: opts.toIsoExclusive ?? null,
+    p_category_id: opts.categoryId ?? null,
+    p_uncategorized_only: opts.uncategorizedOnly ?? false,
+    p_amount_min: opts.amountMin ?? null,
+    p_amount_max: opts.amountMax ?? null,
   });
   return withSignal(q, opts.signal);
 }

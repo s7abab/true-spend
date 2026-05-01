@@ -20,7 +20,7 @@
 
 /* Main content below app header — same flex behavior as categories so layout stays consistent */
 .app-main {
-  flex: 1;
+  flex: 1 1 0%;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -321,6 +321,11 @@ button.txn-row.txn-row-btn:active {
   z-index: 60;
 }
 
+/* Add / edit transaction sheet must sit above report detail and other overlays */
+.overlay.add-sheet-overlay {
+  z-index: 70;
+}
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -441,6 +446,37 @@ button.txn-row.txn-row-btn:active {
 .search-wrap {
   position: relative;
   margin: 12px 16px 0;
+}
+.search-wrap--with-side {
+  margin: 0;
+}
+.history-filter-btn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid #EBEBF0;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  color: #6B6B80;
+  cursor: pointer;
+  position: relative;
+  font-family: inherit;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+.history-filter-btn:active {
+  background: #F4F5F7;
+}
+.history-filter-btn--active::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  background: #32acff;
 }
 .search-input {
   width: 100%;

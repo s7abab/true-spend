@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import * as transactionsApi from '@/features/transactions/api/transactions';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import { getPeriodWindow, type PeriodId } from '@/utils/periodWindows';
-import type { CategoryAggRow } from '@/features/stats/types';
+import type { PeriodSummary } from '@/features/stats/types';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 function aborted(err: unknown): boolean {
@@ -12,12 +12,17 @@ function aborted(err: unknown): boolean {
   return Boolean(/aborted|AbortError/i.test(e.message || '') || e.name === 'AbortError');
 }
 
-export function useStatsAggregates(
-  period: PeriodId,
-  offset: number,
-  breakdownKind: 'expense' | 'income' = 'expense',
-  queryEnabled = true,
-) {
+function parseSummary(raw: unknown): PeriodSummary {
+  const o = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  return {
+    total_income: Number(o.total_income) || 0,
+    total_expense: Number(o.total_expense) || 0,
+    income_txn_count: Number(o.income_txn_count) || 0,
+    expense_txn_count: Number(o.expense_txn_count) || 0,
+  };
+}
+
+export function usePeriodSummary(period: PeriodId, offset: number) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
 
@@ -30,21 +35,16 @@ export function useStatsAggregates(
   }, [period, offset]);
 
   const q = useQuery({
-    queryKey: userId
-      ? queryKeys.transactions.stats(userId, rangeKey, breakdownKind)
-      : ['transactions', 'stats', 'idle'],
-    enabled: Boolean(userId) && queryEnabled,
+    queryKey: userId ? queryKeys.transactions.periodSummary(userId, rangeKey) : ['transactions', 'periodSummary', 'idle'],
+    enabled: Boolean(userId),
     queryFn: async ({ signal }) => {
       const [startIso, endIso] = rangeKey.split('\0');
-      const { data, error: err } =
-        breakdownKind === 'income'
-          ? await transactionsApi.fetchIncomeByCategory(startIso, endIso, { signal })
-          : await transactionsApi.fetchExpenseByCategory(startIso, endIso, { signal });
+      const { data, error: err } = await transactionsApi.fetchPeriodSummary(startIso, endIso, { signal });
       if (err && !aborted(err)) {
-        console.error('stats fetch failed', err);
-        throw new Error(err.message || 'Could not load report');
+        console.error('period summary failed', err);
+        throw new Error(err.message || 'Could not load summary');
       }
-      return (data as CategoryAggRow[]) || [];
+      return parseSummary(data);
     },
   });
 
@@ -53,7 +53,7 @@ export function useStatsAggregates(
 
   return {
     loading: q.isPending,
-    aggRows: q.data ?? [],
+    summary: q.data ?? null,
     window,
     error: errorMsg,
   };

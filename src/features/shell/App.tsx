@@ -298,8 +298,24 @@ function AuthedApp({ user }: { user: User | null }) {
         onTxnPress={openEditTxn}
       />
     ),
-    stats: <StatsScreen categoriesExpense={catsExpense} currency={currency} />,
-    history: <HistoryScreen resolveCat={resolveCat} currency={currency} onTxnPress={openEditTxn} />,
+    stats: (
+      <StatsScreen
+        categoriesExpense={catsExpense}
+        categoriesIncome={catsIncome}
+        resolveCat={resolveCat}
+        currency={currency}
+        onTxnPress={openEditTxn}
+      />
+    ),
+    history: (
+      <HistoryScreen
+        resolveCat={resolveCat}
+        categoriesExpense={catsExpense}
+        categoriesIncome={catsIncome}
+        currency={currency}
+        onTxnPress={openEditTxn}
+      />
+    ),
     categories: (
       <CategoriesScreen
         accent={ACCENT}
@@ -337,7 +353,14 @@ function AuthedApp({ user }: { user: User | null }) {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -8 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 0,
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
+              }}
             >
               {screen}
             </motion.div>

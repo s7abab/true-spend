@@ -320,7 +320,7 @@ export function AddSheet({
 
   return (
     <motion.div
-      className="overlay"
+      className="overlay add-sheet-overlay"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

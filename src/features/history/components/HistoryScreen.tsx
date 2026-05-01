@@ -1,15 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ISearch, CatIcon } from '@/shared/components/Icons';
+import { ISearch, CatIcon, IFilter } from '@/shared/components/Icons';
 import { formatMoney } from '@/utils/money';
 import { groupTxnsByDay } from '@/utils/historyGroup';
 import { useHistoryTransactions } from '@/features/history/hooks/useHistoryTransactions';
+import { HistoryFilterSheet } from '@/features/history/components/HistoryFilterSheet';
 import type { CategoryRow } from '@/features/categories/types';
 import type { TransactionKind } from '@/types/ledger';
 import type { MappedTxn } from '@/utils/txnMap';
+import {
+  defaultHistoryListFilter,
+  hasAdvancedHistoryFilters,
+  type HistoryFilterFields,
+  type HistoryTransactionQuery,
+} from '@/features/history/types';
 
 type ResolveCat = (id: string | null, kind: TransactionKind | string | undefined) => CategoryRow;
 
-function TxnRow({
+export function TxnRow({
   txn,
   resolveCat,
   currency,
@@ -55,44 +62,77 @@ function TxnRow({
 
 type HistoryScreenProps = {
   resolveCat: ResolveCat;
+  categoriesExpense: CategoryRow[];
+  categoriesIncome: CategoryRow[];
   currency?: string;
   onTxnPress?: (txn: MappedTxn) => void;
 };
 
-export function HistoryScreen({ resolveCat, currency = 'INR', onTxnPress }: HistoryScreenProps) {
-  const [filter, setFilter] = useState<'all' | 'expense' | 'income'>('all');
+export function HistoryScreen({
+  resolveCat,
+  categoriesExpense,
+  categoriesIncome,
+  currency = 'INR',
+  onTxnPress,
+}: HistoryScreenProps) {
+  const [listFilter, setListFilter] = useState<HistoryFilterFields>(() => defaultHistoryListFilter());
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const { rows, loading, loadingMore, hasMore, error, loadMore } = useHistoryTransactions(filter, debouncedSearch);
+  const fullQuery: HistoryTransactionQuery = useMemo(
+    () => ({ ...listFilter, search: debouncedSearch }),
+    [listFilter, debouncedSearch],
+  );
+
+  const { rows, loading, loadingMore, hasMore, error, loadMore } = useHistoryTransactions(fullQuery);
 
   const groups = useMemo(() => groupTxnsByDay(rows), [rows]);
 
+  const filterDot = hasAdvancedHistoryFilters(listFilter);
+
   return (
     <div>
-      <div className="search-wrap">
-        <ISearch
-          size={15}
-          style={{
-            position: 'absolute',
-            left: 13,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: '#ACACB8',
-            pointerEvents: 'none',
-          }}
-        />
-        <input
-          className="search-input"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search transactions…"
-        />
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          alignItems: 'stretch',
+          margin: '12px 16px 0',
+        }}
+      >
+        <div className="search-wrap search-wrap--with-side" style={{ margin: 0, flex: 1, minWidth: 0 }}>
+          <ISearch
+            size={15}
+            style={{
+              position: 'absolute',
+              left: 13,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#ACACB8',
+              pointerEvents: 'none',
+            }}
+          />
+          <input
+            className="search-input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search transactions…"
+          />
+        </div>
+        <button
+          type="button"
+          className={`history-filter-btn${filterDot ? ' history-filter-btn--active' : ''}`}
+          aria-label="Filters"
+          onClick={() => setFilterSheetOpen(true)}
+        >
+          <IFilter size={20} stroke={2} />
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 8, padding: '12px 16px 0' }}>
@@ -106,8 +146,8 @@ export function HistoryScreen({ resolveCat, currency = 'INR', onTxnPress }: Hist
           <button
             key={f.id}
             type="button"
-            className={`chip ${filter === f.id ? 'chip-active' : 'chip-idle'}`}
-            onClick={() => setFilter(f.id)}
+            className={`chip ${listFilter.kind === f.id ? 'chip-active' : 'chip-idle'}`}
+            onClick={() => setListFilter((prev) => ({ ...prev, kind: f.id, categoryId: null, uncategorizedOnly: false }))}
           >
             {f.label}
           </button>
@@ -180,6 +220,19 @@ export function HistoryScreen({ resolveCat, currency = 'INR', onTxnPress }: Hist
           </div>
         )}
       </div>
+
+      <HistoryFilterSheet
+        open={filterSheetOpen}
+        applied={fullQuery}
+        categoriesExpense={categoriesExpense}
+        categoriesIncome={categoriesIncome}
+        onClose={() => setFilterSheetOpen(false)}
+        onApply={(patch) => setListFilter((prev) => ({ ...prev, ...patch }))}
+        onClear={() => {
+          setListFilter(defaultHistoryListFilter());
+          setSearch('');
+        }}
+      />
     </div>
   );
 }

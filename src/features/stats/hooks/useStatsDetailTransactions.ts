@@ -3,7 +3,6 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import * as transactionsApi from '@/features/transactions/api/transactions';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import { mapTxnRow, type DbTransactionRow, type MappedTxn } from '@/utils/txnMap';
-import { historyQueryFingerprint, type HistoryTransactionQuery } from '@/features/history/types';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 const PAGE_SIZE = 50;
@@ -14,36 +13,51 @@ function aborted(err: unknown): boolean {
   return Boolean(/aborted|AbortError/i.test(e.message || '') || e.name === 'AbortError');
 }
 
-export function useHistoryTransactions(query: HistoryTransactionQuery) {
+export type ReportDetailFilter = {
+  rangeKey: string;
+  fromIso: string;
+  toIsoExclusive: string;
+  kind: 'all' | 'expense' | 'income';
+  search: string;
+  /** Stable key for React Query (e.g. "cat:uuid" | "uncat" | "all") */
+  categoryScopeKey: string;
+  categoryId: string | null;
+  uncategorizedOnly: boolean;
+  amountMin: number | null;
+  amountMax: number | null;
+};
+
+export function useStatsDetailTransactions(filter: ReportDetailFilter | null) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
 
-  const kind = query.kind === 'all' ? 'all' : query.kind;
-  const search = query.search?.trim() ?? '';
-  const fingerprint = historyQueryFingerprint(query);
+  const search = filter?.search?.trim() ?? '';
 
   const q = useInfiniteQuery({
-    queryKey: userId ? queryKeys.transactions.history(userId, fingerprint) : ['transactions', 'history', 'idle'],
+    queryKey: userId && filter
+      ? queryKeys.transactions.reportDetail(userId, filter.rangeKey, search)
+      : ['transactions', 'reportDetail', 'idle'],
     initialPageParam: null as transactionsApi.TxnPageCursor,
-    enabled: Boolean(userId),
+    enabled: Boolean(userId && filter),
     queryFn: async ({ pageParam, signal }) => {
+      if (!filter) return [];
       const { data, error: err } = await transactionsApi.fetchTransactionsPage({
-        kind,
+        kind: filter.kind,
         search,
         cursor: pageParam,
         limit: PAGE_SIZE,
-        fromIso: query.fromIso,
-        toIsoExclusive: query.toIsoExclusive,
-        categoryId: query.uncategorizedOnly ? null : query.categoryId,
-        uncategorizedOnly: query.uncategorizedOnly,
-        amountMin: query.amountMin,
-        amountMax: query.amountMax,
+        fromIso: filter.fromIso,
+        toIsoExclusive: filter.toIsoExclusive,
+        categoryId: filter.uncategorizedOnly ? null : filter.categoryId,
+        uncategorizedOnly: filter.uncategorizedOnly,
+        amountMin: filter.amountMin,
+        amountMax: filter.amountMax,
         signal,
       });
       if (err && aborted(err)) return [];
       if (err) {
-        console.error('history page failed', err);
-        throw new Error(err.message || 'Could not load history');
+        console.error('report detail page failed', err);
+        throw new Error(err.message || 'Could not load transactions');
       }
       const rows = ((data as DbTransactionRow[]) || []).map((r) => mapTxnRow(r));
       return rows;
