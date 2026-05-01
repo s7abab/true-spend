@@ -1,16 +1,98 @@
 import { useState, useMemo } from 'react';
-import { IClose, ICalendar, IChevDown, IPlus, ICON_MAP } from '../components/Icons';
+import { IClose, ICalendar, IChevDown, IChevLeft, IChevRight, IPlus, ICON_MAP } from '../components/Icons';
 import { CATEGORIES_EXPENSE as CAT_EXP, CATEGORIES_INCOME as CAT_INC } from '../data/categories';
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const NOW    = new Date(2026, 4, 1);
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAY_NAMES   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+const TODAY       = new Date(); TODAY.setHours(0,0,0,0);
 
-function getDateLabel(offset) {
-  const d = new Date(NOW);
-  d.setDate(d.getDate() + offset);
-  if (offset === 0)  return 'Today';
-  if (offset === -1) return 'Yesterday';
-  return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+/* ── Inline Calendar Component ── */
+function Calendar({ selected, onSelect, heroColor }) {
+  const [viewYear,  setViewYear]  = useState(selected.getFullYear());
+  const [viewMonth, setViewMonth] = useState(selected.getMonth());
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const isNextDisabled = false;
+
+  // Build calendar grid
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const isToday    = (d) => d === TODAY.getDate() && viewMonth === TODAY.getMonth() && viewYear === TODAY.getFullYear();
+  const isSelected = (d) => d === selected.getDate() && viewMonth === selected.getMonth() && viewYear === selected.getFullYear();
+
+  return (
+    <div style={{ padding: '0 16px 16px', animation: 'calFade 180ms ease' }}>
+      {/* month nav */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <button onClick={prevMonth} style={{ width: 36, height: 36, border: 'none', background: '#F4F5F7', borderRadius: 10, display: 'grid', placeItems: 'center', cursor: 'pointer', color: '#0F0F12' }}>
+          <IChevLeft size={16} />
+        </button>
+        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: -0.3 }}>
+          {MONTH_NAMES[viewMonth]} {viewYear}
+        </div>
+        <button onClick={nextMonth} disabled={isNextDisabled} style={{ width: 36, height: 36, border: 'none', background: '#F4F5F7', borderRadius: 10, display: 'grid', placeItems: 'center', cursor: isNextDisabled ? 'default' : 'pointer', color: '#0F0F12', opacity: isNextDisabled ? 0.3 : 1 }}>
+          <IChevRight size={16} />
+        </button>
+      </div>
+
+      {/* day-of-week header */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6 }}>
+        {DAY_NAMES.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#ACACB8', padding: '4px 0', letterSpacing: 0.2 }}>{d}</div>
+        ))}
+      </div>
+
+      {/* date grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px 0' }}>
+        {cells.map((day, i) => {
+          if (!day) return <div key={`e${i}`} />;
+          const sel   = isSelected(day);
+          const today = isToday(day);
+          return (
+            <button
+              key={day}
+              onClick={() => onSelect(new Date(viewYear, viewMonth, day))}
+              style={{
+                width: '100%', aspectRatio: '1',
+                border: 'none', borderRadius: 999, cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 14, fontWeight: sel ? 700 : today ? 600 : 400,
+                background: sel ? heroColor : 'transparent',
+                color: sel ? '#fff' : today ? heroColor : '#0F0F12',
+                display: 'grid', placeItems: 'center',
+                transition: 'background 140ms',
+                outline: today && !sel ? `2px solid ${heroColor}` : 'none',
+                outlineOffset: '-2px',
+              }}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── Helpers ── */
+function formatDateLabel(date) {
+  const today     = TODAY;
+  const yesterday = new Date(TODAY); yesterday.setDate(TODAY.getDate() - 1);
+  if (date.toDateString() === today.toDateString())     return 'Today';
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
 function Keypad({ onPress }) {
@@ -26,13 +108,14 @@ function Keypad({ onPress }) {
   );
 }
 
+/* ── Main AddSheet ── */
 export function AddSheet({ accent, onClose, onSave }) {
   const [kind,           setKind]           = useState('expense');
   const [amount,         setAmount]         = useState('0');
   const [catId,          setCatId]          = useState('food');
   const [note,           setNote]           = useState('');
-  const [dateOffset,     setDateOffset]     = useState(0);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate,   setSelectedDate]   = useState(new Date(TODAY));
+  const [showCal,        setShowCal]        = useState(false);
 
   const cats      = kind === 'expense' ? CAT_EXP : CAT_INC;
   const cat       = cats.find(c => c.id === catId) || cats[0];
@@ -51,14 +134,18 @@ export function AddSheet({ accent, onClose, onSave }) {
     });
   };
 
-  const numAmount = parseFloat(amount) || 0;
-  const canSave   = numAmount > 0;
+  const numAmount  = parseFloat(amount) || 0;
+  const canSave    = numAmount > 0;
+  const dateLabel  = useMemo(() => formatDateLabel(selectedDate), [selectedDate]);
 
   const formatted = amount === '0'
     ? '0'
     : Number(amount.split('.')[0]).toLocaleString('en-IN') + (amount.includes('.') ? '.' + amount.split('.')[1] : '');
 
-  const dateLabel = useMemo(() => getDateLabel(dateOffset), [dateOffset]);
+  const handleDateSelect = (date) => {
+    setSelectedDate(date);
+    setShowCal(false);
+  };
 
   const doSave = () => {
     if (!canSave) return;
@@ -70,13 +157,11 @@ export function AddSheet({ accent, onClose, onSave }) {
       <div className="sheet">
         <div className="sheet-handle" />
 
-        {/* top row: close + toggle */}
+        {/* header: close + toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 0' }}>
           <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: 10, background: '#F4F5F7', border: 'none', display: 'grid', placeItems: 'center', color: '#6B6B80', flexShrink: 0 }}>
             <IClose size={16} />
           </button>
-
-          {/* expense / income segmented */}
           <div className="seg" style={{ flex: 1 }}>
             <div className="seg-thumb" style={{ left: isExp ? 3 : '50%', width: 'calc(50% - 3px)' }} />
             {['expense', 'income'].map(t => (
@@ -89,8 +174,8 @@ export function AddSheet({ accent, onClose, onSave }) {
           </div>
         </div>
 
-        {/* amount */}
-        <div style={{ padding: '20px 24px 14px', textAlign: 'center', borderBottom: '1px solid #F5F5F8' }}>
+        {/* amount + date pill */}
+        <div style={{ padding: '20px 24px 14px', textAlign: 'center', borderBottom: showCal ? 'none' : '1px solid #F5F5F8' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3 }}>
             <span style={{ fontSize: 24, fontWeight: 600, opacity: 0.35, verticalAlign: 'top', marginTop: 8, display: 'inline-block' }}>₹</span>
             <span style={{ fontSize: 52, fontWeight: 700, letterSpacing: -2, lineHeight: 1, color: numAmount > 0 ? heroColor : '#D1D1DB', transition: 'color 200ms' }}>
@@ -98,44 +183,27 @@ export function AddSheet({ accent, onClose, onSave }) {
             </span>
           </div>
 
-          {/* date pill */}
-          <button onClick={() => setShowDatePicker(v => !v)} style={{
+          <button onClick={() => setShowCal(v => !v)} style={{
             marginTop: 10,
             display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '5px 11px', borderRadius: 999,
-            background: showDatePicker ? heroColor + '14' : '#F4F5F7',
-            color: showDatePicker ? heroColor : '#6B6B80',
-            border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+            padding: '6px 13px', borderRadius: 999,
+            background: showCal ? heroColor : '#F4F5F7',
+            color: showCal ? '#fff' : '#6B6B80',
+            border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            transition: 'background 180ms, color 180ms',
           }}>
-            <ICalendar size={12} stroke={2} />
+            <ICalendar size={13} stroke={2} />
             {dateLabel}
-            <IChevDown size={11} style={{ transform: showDatePicker ? 'rotate(180deg)' : 'none', transition: 'transform 180ms' }} />
+            <IChevDown size={12} style={{ transform: showCal ? 'rotate(180deg)' : 'none', transition: 'transform 200ms' }} />
           </button>
-
-          {/* date strip */}
-          {showDatePicker && (
-            <div style={{ display: 'flex', gap: 5, overflowX: 'auto', marginTop: 10, paddingBottom: 2 }}>
-              {Array.from({ length: 14 }, (_, i) => -i).map(off => {
-                const d = new Date(NOW); d.setDate(d.getDate() + off);
-                const active = off === dateOffset;
-                return (
-                  <button key={off} onClick={() => { setDateOffset(off); setShowDatePicker(false); }} style={{
-                    flexShrink: 0, width: 44, padding: '6px 0',
-                    borderRadius: 10, border: 'none', cursor: 'pointer',
-                    background: active ? heroColor : '#F4F5F7',
-                    color: active ? '#fff' : '#0F0F12',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                  }}>
-                    <div style={{ fontSize: 8, fontWeight: 700, opacity: 0.7 }}>
-                      {off === 0 ? 'TODAY' : d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
-                    </div>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>{d.getDate()}</div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
+
+        {/* ── Inline Calendar ── */}
+        {showCal && (
+          <div style={{ borderBottom: '1px solid #F5F5F8' }}>
+            <Calendar selected={selectedDate} onSelect={handleDateSelect} heroColor={heroColor} />
+          </div>
+        )}
 
         {/* category strip */}
         <div className="cat-strip" style={{ borderBottom: '1px solid #F5F5F8' }}>
@@ -162,7 +230,7 @@ export function AddSheet({ accent, onClose, onSave }) {
           })}
         </div>
 
-        {/* note input */}
+        {/* note */}
         <div style={{ padding: '10px 16px', borderBottom: '1px solid #F5F5F8' }}>
           <input
             value={note}
@@ -177,8 +245,8 @@ export function AddSheet({ accent, onClose, onSave }) {
           />
         </div>
 
-        {/* keypad */}
-        <Keypad onPress={press} />
+        {/* keypad — hidden while calendar is open so sheet doesn't get too tall */}
+        {!showCal && <Keypad onPress={press} />}
 
         {/* add button */}
         <div style={{ padding: '10px 16px', paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
