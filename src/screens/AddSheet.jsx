@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { IClose, ICalendar, IChevDown, IChevLeft, IChevRight, IPlus, ICON_MAP } from '../components/Icons';
-import { CATEGORIES_EXPENSE as CAT_EXP, CATEGORIES_INCOME as CAT_INC } from '../data/categories';
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAY_NAMES   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -109,7 +108,7 @@ function Keypad({ onPress }) {
 }
 
 /* ── Main AddSheet ── */
-export function AddSheet({ accent, onClose, onSave }) {
+export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose, onSave }) {
   const [kind,           setKind]           = useState('expense');
   const [amount,         setAmount]         = useState('0');
   const [catId,          setCatId]          = useState('food');
@@ -117,7 +116,7 @@ export function AddSheet({ accent, onClose, onSave }) {
   const [selectedDate,   setSelectedDate]   = useState(new Date(TODAY));
   const [showCal,        setShowCal]        = useState(false);
 
-  const cats      = kind === 'expense' ? CAT_EXP : CAT_INC;
+  const cats      = kind === 'expense' ? categoriesExpense : categoriesIncome;
   const cat       = cats.find(c => c.id === catId) || cats[0];
   const isExp     = kind === 'expense';
   const heroColor = isExp ? accent : '#22A06B';

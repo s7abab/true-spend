@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { IChevLeft, IChevRight, CatIcon } from '../components/Icons';
-import { fmtINR, CATEGORIES_EXPENSE } from '../data/categories';
+import { fmtINR } from '../data/categories';
 
 const PERIODS = [
   { id: 'daily',   label: 'Day' },
@@ -35,7 +35,7 @@ function getPeriodInfo(period, offset) {
   return { label: String(d.getFullYear()), sub: offset === 0 ? 'This year' : offset === -1 ? 'Last year' : '' };
 }
 
-export function StatsScreen({ txns }) {
+export function StatsScreen({ txns, categoriesExpense }) {
   const [period, setPeriod] = useState('monthly');
   const [offset, setOffset] = useState(0);
 
@@ -47,7 +47,7 @@ export function StatsScreen({ txns }) {
   const byCat = {};
   expTxns.forEach(t => { byCat[t.cat] = (byCat[t.cat] || 0) + t.amount * scale; });
   const sorted = Object.entries(byCat)
-    .map(([id, amt]) => ({ cat: CATEGORIES_EXPENSE.find(c => c.id === id) || CATEGORIES_EXPENSE.at(-1), amt }))
+    .map(([id, amt]) => ({ cat: categoriesExpense.find(c => c.id === id) || categoriesExpense.at(-1), amt }))
     .sort((a, b) => b.amt - a.amt);
 
   const denom = totalSpent || 1;
@@ -62,11 +62,6 @@ export function StatsScreen({ txns }) {
 
   return (
     <div>
-      {/* header */}
-      <div className="screen-header" style={{ padding: '16px 20px 12px' }}>
-        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.7 }}>Report</div>
-      </div>
-
       {/* period selector */}
       <div style={{ margin: '16px 16px 0', background: '#EBEBF0', borderRadius: 12, padding: 3, display: 'flex', position: 'relative' }}>
         <div style={{

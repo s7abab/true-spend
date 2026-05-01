@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { ISearch, CatIcon } from '../components/Icons';
-import { findCat } from '../data/categories';
-
-function TxnRow({ txn }) {
-  const cat   = findCat(txn.cat, txn.kind);
+function TxnRow({ txn, resolveCat }) {
+  const cat   = resolveCat(txn.cat, txn.kind);
   const isInc = txn.kind === 'income';
   return (
     <div className="txn-row">
@@ -21,7 +19,7 @@ function TxnRow({ txn }) {
   );
 }
 
-export function HistoryScreen({ txns }) {
+export function HistoryScreen({ txns, resolveCat }) {
   const [filter, setFilter] = useState('all');
   const [search,  setSearch] = useState('');
 
@@ -35,14 +33,6 @@ export function HistoryScreen({ txns }) {
 
   return (
     <div>
-      {/* header */}
-      <div className="screen-header" style={{ padding: '16px 20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.7 }}>History</div>
-        <button style={{ width: 38, height: 38, borderRadius: 999, background: '#fff', border: 'none', display: 'grid', placeItems: 'center', color: '#0F0F12', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
-          <ISearch size={18} stroke={1.9} />
-        </button>
-      </div>
-
       {/* search */}
       <div className="search-wrap">
         <ISearch size={15} style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: '#ACACB8', pointerEvents: 'none' }} />
@@ -74,7 +64,7 @@ export function HistoryScreen({ txns }) {
             <div key={day} style={{ marginBottom: 8 }}>
               <div style={{ padding: '0 20px 6px', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: '#ACACB8' }}>{day}</div>
               <div style={{ margin: '0 16px', background: '#fff', borderRadius: 18, overflow: 'hidden' }}>
-                {list.map(t => <TxnRow key={t.id} txn={t} />)}
+                {list.map(t => <TxnRow key={t.id} txn={t} resolveCat={resolveCat} />)}
               </div>
             </div>
           ))

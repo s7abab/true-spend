@@ -28,6 +28,8 @@ export const IChevRight = (p) => <Icon {...p}><path d="M9 6l6 6-6 6" /></Icon>;
 export const ICTrend    = (p) => <Icon {...p}><path d="M3 17l6-6 4 4 8-9" /><path d="M14 6h7v7" /></Icon>;
 export const ISettings  = (p) => <Icon {...p}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></Icon>;
 export const IFilter    = (p) => <Icon {...p}><path d="M3 5h18" /><path d="M6 12h12" /><path d="M10 19h4" /></Icon>;
+/** Categories / tags */
+export const ITag       = (p) => <Icon {...p}><path d="M12 2H4a2 2 0 0 0-2 2v8a2 2 0 0 0 .59 1.41L11 20.91a2 2 0 0 0 2.82 0l8.59-8.59A2 2 0 0 0 20 10V4a2 2 0 0 0-2-2h-6z" /><circle cx="9" cy="6" r="1.2" /></Icon>;
 export const IDownload  = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></Icon>;
 
 // Category icons
