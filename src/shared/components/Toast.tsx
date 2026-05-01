@@ -29,7 +29,8 @@ function Confetti() {
 
 export type ToastPayload =
   | { id: number; kind: 'error'; message?: string }
-  | { id: number; kind: 'income' | 'expense'; amount: number };
+  | { id: number; kind: 'income' | 'expense'; amount: number }
+  | { id: number; kind: 'done'; message: string };
 
 type ToastProps = {
   toast: ToastPayload;
@@ -39,9 +40,10 @@ type ToastProps = {
 
 export function Toast({ toast, accent, currency = 'INR' }: ToastProps) {
   const isError = toast.kind === 'error';
+  const isDone = toast.kind === 'done';
   const isIncome = toast.kind === 'income';
 
-  const pillClass = `toast${isError ? ' toast--error' : ''}`;
+  const pillClass = `toast${isError ? ' toast--error' : ''}${isDone ? ' toast--done' : ''}`;
 
   return (
     <motion.div
@@ -68,7 +70,7 @@ export function Toast({ toast, accent, currency = 'INR' }: ToastProps) {
               width: 22,
               height: 22,
               borderRadius: 999,
-              background: isIncome ? '#22A06B' : accent,
+              background: isDone ? '#22A06B' : isIncome ? '#22A06B' : accent,
               display: 'grid',
               placeItems: 'center',
               flexShrink: 0,
@@ -81,6 +83,8 @@ export function Toast({ toast, accent, currency = 'INR' }: ToastProps) {
           <span style={{ textAlign: 'left', wordBreak: 'break-word' }}>
             {toast.message || 'Something went wrong'}
           </span>
+        ) : isDone ? (
+          <span style={{ textAlign: 'center', wordBreak: 'break-word', whiteSpace: 'normal' }}>{toast.message}</span>
         ) : (
           <>
             {isIncome ? 'Income added' : 'Expense added'} · {formatMoney(toast.amount, currency)}

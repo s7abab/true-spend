@@ -1,4 +1,5 @@
 import { useState, useCallback, type ComponentType } from 'react';
+import type { MappedTxn } from '@/utils/txnMap';
 import { AnimatePresence, motion } from 'framer-motion';
 import { HomeScreen } from '@/features/transactions/components/HomeScreen';
 import { StatsScreen } from '@/features/stats/components/StatsScreen';
@@ -125,14 +126,23 @@ function AuthedApp({ user }: { user: User | null }) {
     error: categoriesError,
     refetch: refetchCategories,
   } = useCategories();
-  const { home, addTransaction, exportAllTransactions, error: txnsError, refetch: refetchTransactions } =
-    useTransactions();
+  const {
+    home,
+    addTransaction,
+    updateTransaction,
+    removeTransaction,
+    exportAllTransactions,
+    error: txnsError,
+    refetch: refetchTransactions,
+  } = useTransactions();
   const currency = profile?.currency || 'INR';
 
   const [tab, setTab] = useState<TabId>('home');
   const [adding, setAdding] = useState(false);
+  const [editingTxn, setEditingTxn] = useState<MappedTxn | null>(null);
   const [toast, setToast] = useState<ToastPayload | null>(null);
   const [savingTxn, setSavingTxn] = useState(false);
+  const [deletingTxn, setDeletingTxn] = useState(false);
   const [retrying, setRetrying] = useState(false);
 
   const dataErrors = [profileError, categoriesError, txnsError].filter(Boolean) as string[];
@@ -152,6 +162,31 @@ function AuthedApp({ user }: { user: User | null }) {
   const canOpenAdd =
     !categoriesLoading && !categoriesError && (catsExpense.length > 0 || catsIncome.length > 0);
 
+  const closeTxnSheet = () => {
+    if (!savingTxn && !deletingTxn) {
+      setAdding(false);
+      setEditingTxn(null);
+    }
+  };
+
+  const openEditTxn = useCallback(
+    (txn: MappedTxn) => {
+      if (!canOpenAdd) {
+        const msg = categoriesLoading
+          ? 'Still loading categories…'
+          : categoriesError
+            ? 'Fix the data connection, then try again.'
+            : 'Add at least one category first (Categories tab).';
+        setToast({ id: Date.now(), kind: 'error', message: msg });
+        setTimeout(() => setToast(null), 3200);
+        return;
+      }
+      setEditingTxn(txn);
+      setAdding(true);
+    },
+    [canOpenAdd, categoriesLoading, categoriesError],
+  );
+
   const onSaveTxn = async (t: {
     kind: string;
     category_id: string | null;
@@ -162,6 +197,29 @@ function AuthedApp({ user }: { user: User | null }) {
   }) => {
     setSavingTxn(true);
     try {
+      if (editingTxn) {
+        const res = await updateTransaction(editingTxn.id, {
+          kind: t.kind,
+          category_id: t.category_id,
+          amount: t.amount,
+          title: t.title,
+          note: t.note,
+          occurred_at: t.occurred_at,
+        });
+        if (res.error) {
+          const msg = res.error.message || 'Could not update transaction';
+          console.error('updateTransaction failed', res.error);
+          setToast({ id: Date.now(), kind: 'error', message: msg });
+          setTimeout(() => setToast(null), 4200);
+          return;
+        }
+        setAdding(false);
+        setEditingTxn(null);
+        setToast({ id: Date.now(), kind: 'done', message: 'Transaction updated' });
+        setTimeout(() => setToast(null), 2600);
+        return;
+      }
+
       const res = await addTransaction({
         kind: t.kind,
         category_id: t.category_id,
@@ -189,6 +247,27 @@ function AuthedApp({ user }: { user: User | null }) {
     }
   };
 
+  const onDeleteTxn = async () => {
+    if (!editingTxn) return;
+    setDeletingTxn(true);
+    try {
+      const res = await removeTransaction(editingTxn.id);
+      if (res.error) {
+        const msg = res.error.message || 'Could not delete transaction';
+        console.error('removeTransaction failed', res.error);
+        setToast({ id: Date.now(), kind: 'error', message: msg });
+        setTimeout(() => setToast(null), 4200);
+        return;
+      }
+      setAdding(false);
+      setEditingTxn(null);
+      setToast({ id: Date.now(), kind: 'done', message: 'Transaction deleted' });
+      setTimeout(() => setToast(null), 2600);
+    } finally {
+      setDeletingTxn(false);
+    }
+  };
+
   const openAdd = () => {
     if (!canOpenAdd) {
       const msg = categoriesLoading
@@ -200,6 +279,7 @@ function AuthedApp({ user }: { user: User | null }) {
       setTimeout(() => setToast(null), 3200);
       return;
     }
+    setEditingTxn(null);
     setAdding(true);
   };
 
@@ -215,10 +295,11 @@ function AuthedApp({ user }: { user: User | null }) {
         resolveCat={resolveCat}
         currency={currency}
         onSeeAll={() => setTab('history')}
+        onTxnPress={openEditTxn}
       />
     ),
     stats: <StatsScreen categoriesExpense={catsExpense} currency={currency} />,
-    history: <HistoryScreen resolveCat={resolveCat} currency={currency} />,
+    history: <HistoryScreen resolveCat={resolveCat} currency={currency} onTxnPress={openEditTxn} />,
     categories: (
       <CategoriesScreen
         accent={ACCENT}
@@ -307,13 +388,16 @@ function AuthedApp({ user }: { user: User | null }) {
       <AnimatePresence>
         {adding && (
           <AddSheet
-            key="add-sheet"
+            key={editingTxn?.id ?? 'add-sheet'}
             accent={ACCENT}
             categoriesExpense={catsExpense}
             categoriesIncome={catsIncome}
             currency={currency}
             saving={savingTxn}
-            onClose={() => !savingTxn && setAdding(false)}
+            deleting={deletingTxn}
+            initialTxn={editingTxn}
+            onDelete={editingTxn ? () => void onDeleteTxn() : undefined}
+            onClose={closeTxnSheet}
             onSave={onSaveTxn}
           />
         )}

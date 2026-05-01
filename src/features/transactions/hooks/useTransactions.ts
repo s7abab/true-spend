@@ -119,6 +119,19 @@ export function useTransactions() {
     onSuccess: invalidateTransactions,
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (args: {
+      uid: string;
+      id: string;
+      row: transactionsApi.TransactionUpdateFields;
+    }) => {
+      const out = await transactionsApi.updateTransactionRow(args.uid, args.id, args.row);
+      if (out.error) throw out.error;
+      return out.data;
+    },
+    onSuccess: invalidateTransactions,
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async ({ uid, id }: { uid: string; id: string }) => {
       const out = await transactionsApi.deleteTransactionRow(uid, id);
@@ -173,6 +186,37 @@ export function useTransactions() {
     [user, userId, insertMutation],
   );
 
+  const updateTransaction = useCallback(
+    async (
+      id: string,
+      fields: {
+        kind: string;
+        category_id: string | null;
+        amount: number;
+        title: string;
+        note: string | null;
+        occurred_at: string;
+      },
+    ) => {
+      if (!userId || !user) return { error: new Error('not signed in') as Error, data: null as null };
+      const row: transactionsApi.TransactionUpdateFields = {
+        kind: fields.kind,
+        category_id: fields.category_id ?? null,
+        amount: fields.amount,
+        title: fields.title || null,
+        note: fields.note,
+        occurred_at: fields.occurred_at,
+      };
+      try {
+        const data = await updateMutation.mutateAsync({ uid: user.id, id, row });
+        return { data, error: null as null };
+      } catch (e) {
+        return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+      }
+    },
+    [user, userId, updateMutation],
+  );
+
   const removeTransaction = useCallback(
     async (id: string) => {
       if (!userId || !user) return { error: new Error('not signed in') };
@@ -220,6 +264,7 @@ export function useTransactions() {
     refetch: refetchTransactions,
     refetchTransactions,
     addTransaction,
+    updateTransaction,
     removeTransaction,
     exportAllTransactions,
   };

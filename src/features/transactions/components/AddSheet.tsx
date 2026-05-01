@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect, useLayoutEffect, type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
-import { IClose, ICalendar, IChevDown, IChevLeft, IChevRight, IPlus, ICON_MAP } from '@/shared/components/Icons';
+import { ICheck, IClose, ICalendar, IChevDown, IChevLeft, IChevRight, IPlus, ITrash, ICON_MAP } from '@/shared/components/Icons';
 import { formatDateLabel } from '@/utils/dateLabel';
 import { currencyPrefix } from '@/utils/money';
 import type { CategoryRow } from '@/features/categories/types';
 import type { TransactionKind } from '@/types/ledger';
+import type { MappedTxn } from '@/utils/txnMap';
 
 const MONTH_NAMES = [
   'January',
@@ -178,6 +179,13 @@ function initialKindAndCat(expense: CategoryRow[], income: CategoryRow[]) {
   return { kind: 'expense' as TransactionKind, catId: null as string | null };
 }
 
+function txnAmountKeypad(n: number): string {
+  const v = Math.round(Number(n) * 100) / 100;
+  if (!Number.isFinite(v) || v <= 0) return '0';
+  if (Number.isInteger(v)) return String(v);
+  return v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+
 export type AddSheetSavePayload = {
   kind: TransactionKind;
   category_id: string;
@@ -193,6 +201,10 @@ type AddSheetProps = {
   categoriesIncome: CategoryRow[];
   onClose: () => void;
   onSave: (t: AddSheetSavePayload) => void;
+  /** When set, sheet opens in edit mode for this transaction. */
+  initialTxn?: MappedTxn | null;
+  onDelete?: () => void;
+  deleting?: boolean;
   currency?: string;
   saving?: boolean;
 };
@@ -203,14 +215,28 @@ export function AddSheet({
   categoriesIncome,
   onClose,
   onSave,
+  initialTxn = null,
+  onDelete,
+  deleting = false,
   currency = 'INR',
   saving = false,
 }: AddSheetProps) {
-  const [kind, setKind] = useState<TransactionKind>(() => initialKindAndCat(categoriesExpense, categoriesIncome).kind);
-  const [amount, setAmount] = useState('0');
-  const [catId, setCatId] = useState<string | null>(() => initialKindAndCat(categoriesExpense, categoriesIncome).catId);
-  const [note, setNote] = useState('');
-  const [selectedDate, setSelectedDate] = useState(() => new Date(TODAY));
+  const isEdit = Boolean(initialTxn);
+  const [kind, setKind] = useState<TransactionKind>(() =>
+    initialTxn ? initialTxn.kind : initialKindAndCat(categoriesExpense, categoriesIncome).kind,
+  );
+  const [amount, setAmount] = useState(() =>
+    initialTxn ? txnAmountKeypad(initialTxn.amount) : '0',
+  );
+  const [catId, setCatId] = useState<string | null>(() =>
+    initialTxn ? initialTxn.cat : initialKindAndCat(categoriesExpense, categoriesIncome).catId,
+  );
+  const [note, setNote] = useState(() =>
+    initialTxn ? (initialTxn.note || initialTxn.title || '') : '',
+  );
+  const [selectedDate, setSelectedDate] = useState(() =>
+    initialTxn ? new Date(initialTxn.occurredDate) : new Date(TODAY),
+  );
   const [showCal, setShowCal] = useState(false);
 
   useEffect(() => {
@@ -242,6 +268,7 @@ export function AddSheet({
   const isExp = kind === 'expense';
   const heroColor = isExp ? accent : '#22A06B';
   const curSym = currencyPrefix(currency);
+  const busy = saving || deleting;
 
   const handleKind = (k: TransactionKind) => {
     const list = k === 'expense' ? categoriesExpense : categoriesIncome;
@@ -275,7 +302,7 @@ export function AddSheet({
   };
 
   const doSave = () => {
-    if (!canSave || !cat || saving) return;
+    if (!canSave || !cat || busy) return;
     onSave({
       kind,
       category_id: cat.id,
@@ -298,7 +325,7 @@ export function AddSheet({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.22 }}
-      onClick={(e) => e.target === e.currentTarget && !saving && onClose()}
+      onClick={(e) => e.target === e.currentTarget && !busy && onClose()}
     >
       <motion.div
         className="sheet"
@@ -312,7 +339,7 @@ export function AddSheet({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 0' }}>
           <button
             type="button"
-            disabled={saving}
+            disabled={busy}
             onClick={onClose}
             aria-label="Close"
             style={{
@@ -325,7 +352,7 @@ export function AddSheet({
               placeItems: 'center',
               color: '#6B6B80',
               flexShrink: 0,
-              opacity: saving ? 0.5 : 1,
+              opacity: busy ? 0.5 : 1,
             }}
           >
             <IClose size={16} />
@@ -338,7 +365,7 @@ export function AddSheet({
                 <button
                   key={t}
                   type="button"
-                  disabled={disabled}
+                  disabled={disabled || busy}
                   className={`seg-btn${kind === t ? ' active' : ''}`}
                   onClick={() => handleKind(t)}
                   style={{
@@ -429,6 +456,7 @@ export function AddSheet({
                 key={c.id}
                 type="button"
                 className="cat-btn"
+                disabled={busy}
                 onClick={() => setCatId(c.id)}
                 style={{
                   background: active ? c.tint : '#F4F5F7',
@@ -461,6 +489,7 @@ export function AddSheet({
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
+            disabled={busy}
             placeholder="Add a note (optional)"
             style={{
               width: '100%',
@@ -477,21 +506,59 @@ export function AddSheet({
           />
         </div>
 
-        {!showCal && <Keypad onPress={press} />}
+        {!showCal && (
+          <div style={{ opacity: busy ? 0.45 : 1, pointerEvents: busy ? 'none' : 'auto' }}>
+            <Keypad onPress={press} />
+          </div>
+        )}
 
-        <div style={{ padding: '10px 16px', paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 10,
+            alignItems: 'stretch',
+            padding: '10px 16px',
+            paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+          }}
+        >
+          {isEdit && onDelete ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onDelete}
+              aria-label={deleting ? 'Deleting…' : 'Delete transaction'}
+              title="Delete"
+              style={{
+                flexShrink: 0,
+                width: 54,
+                height: 54,
+                borderRadius: 16,
+                border: 'none',
+                background: 'rgba(255, 77, 109, 0.1)',
+                color: '#D92D4A',
+                cursor: busy ? 'default' : 'pointer',
+                display: 'grid',
+                placeItems: 'center',
+                fontFamily: 'inherit',
+                opacity: busy ? 0.55 : 1,
+              }}
+            >
+              <ITrash size={20} stroke={2} />
+            </button>
+          ) : null}
           <button
             type="button"
-            disabled={!canSave || saving}
+            disabled={!canSave || busy}
             onClick={doSave}
             style={{
-              width: '100%',
+              flex: 1,
+              minWidth: 0,
               height: 54,
               borderRadius: 16,
-              background: canSave && !saving ? heroColor : '#F0F0F5',
-              color: canSave && !saving ? '#fff' : '#ACACB8',
+              background: canSave && !busy ? heroColor : '#F0F0F5',
+              color: canSave && !busy ? '#fff' : '#ACACB8',
               border: 'none',
-              cursor: canSave && !saving ? 'pointer' : 'default',
+              cursor: canSave && !busy ? 'pointer' : 'default',
               fontSize: 17,
               fontWeight: 700,
               letterSpacing: -0.3,
@@ -499,19 +566,19 @@ export function AddSheet({
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              boxShadow: canSave && !saving ? `0 10px 24px -8px ${heroColor}99` : 'none',
+              boxShadow: canSave && !busy ? `0 10px 24px -8px ${heroColor}99` : 'none',
               transition: 'background 200ms, box-shadow 200ms',
               fontFamily: 'inherit',
             }}
             onPointerDown={(e) => {
-              if (canSave && !saving) e.currentTarget.style.transform = 'scale(0.98)';
+              if (canSave && !busy) e.currentTarget.style.transform = 'scale(0.98)';
             }}
             onPointerUp={(e) => {
               e.currentTarget.style.transform = '';
             }}
           >
-            <IPlus size={20} stroke={2.6} />
-            {saving ? 'Saving…' : `Add ${isExp ? 'expense' : 'income'}`}
+            {isEdit ? <ICheck size={20} stroke={2.6} /> : <IPlus size={20} stroke={2.6} />}
+            {saving ? 'Saving…' : isEdit ? 'Save changes' : `Add ${isExp ? 'expense' : 'income'}`}
           </button>
         </div>
       </motion.div>

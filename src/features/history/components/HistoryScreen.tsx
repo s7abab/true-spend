@@ -9,12 +9,22 @@ import type { MappedTxn } from '@/utils/txnMap';
 
 type ResolveCat = (id: string | null, kind: TransactionKind | string | undefined) => CategoryRow;
 
-function TxnRow({ txn, resolveCat, currency }: { txn: MappedTxn; resolveCat: ResolveCat; currency: string }) {
+function TxnRow({
+  txn,
+  resolveCat,
+  currency,
+  onPress,
+}: {
+  txn: MappedTxn;
+  resolveCat: ResolveCat;
+  currency: string;
+  onPress?: () => void;
+}) {
   const cat = resolveCat(txn.cat, txn.kind);
   const isInc = txn.kind === 'income';
   const amt = formatMoney(txn.amount, currency);
-  return (
-    <div className="txn-row">
+  const body = (
+    <>
       <div className="txn-icon" style={{ background: `${cat.tint}18`, color: cat.tint }}>
         <CatIcon cat={cat} size={44} radius={14} />
       </div>
@@ -31,16 +41,25 @@ function TxnRow({ txn, resolveCat, currency }: { txn: MappedTxn; resolveCat: Res
         {isInc ? '+' : '−'}
         {amt}
       </div>
-    </div>
+    </>
   );
+  if (onPress) {
+    return (
+      <button type="button" className="txn-row txn-row-btn" onClick={onPress} aria-label={`Edit ${txn.title}`}>
+        {body}
+      </button>
+    );
+  }
+  return <div className="txn-row">{body}</div>;
 }
 
 type HistoryScreenProps = {
   resolveCat: ResolveCat;
   currency?: string;
+  onTxnPress?: (txn: MappedTxn) => void;
 };
 
-export function HistoryScreen({ resolveCat, currency = 'INR' }: HistoryScreenProps) {
+export function HistoryScreen({ resolveCat, currency = 'INR', onTxnPress }: HistoryScreenProps) {
   const [filter, setFilter] = useState<'all' | 'expense' | 'income'>('all');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -120,7 +139,13 @@ export function HistoryScreen({ resolveCat, currency = 'INR' }: HistoryScreenPro
                 </div>
                 <div style={{ margin: '0 16px', background: '#fff', borderRadius: 18, overflow: 'hidden' }}>
                   {list.map((t) => (
-                    <TxnRow key={t.id} txn={t} resolveCat={resolveCat} currency={currency} />
+                    <TxnRow
+                      key={t.id}
+                      txn={t}
+                      resolveCat={resolveCat}
+                      currency={currency}
+                      onPress={onTxnPress ? () => onTxnPress(t) : undefined}
+                    />
                   ))}
                 </div>
               </div>

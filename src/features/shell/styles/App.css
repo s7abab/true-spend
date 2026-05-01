@@ -257,6 +257,21 @@
 }
 .txn-row:last-child { border-bottom: none; }
 
+button.txn-row.txn-row-btn {
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+button.txn-row.txn-row-btn:active {
+  background: rgba(15, 15, 18, 0.045);
+}
+
 .txn-icon {
   width: 44px;
   height: 44px;
@@ -486,4 +501,9 @@
   color: #FFE8EC;
   border-radius: 16px;
   max-width: min(420px, 100%);
+}
+.toast--done {
+  white-space: normal;
+  max-width: min(420px, 100%);
+  border-radius: 16px;
 }

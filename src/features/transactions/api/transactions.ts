@@ -82,6 +82,19 @@ export async function insertTransaction(row: TransactionInsert) {
   return supabase.from('transactions').insert(row).select().maybeSingle();
 }
 
+export type TransactionUpdateFields = {
+  kind: string;
+  category_id: string | null;
+  amount: number;
+  title: string | null;
+  note: string | null;
+  occurred_at: string;
+};
+
+export async function updateTransactionRow(userId: string, id: string, row: TransactionUpdateFields) {
+  return supabase.from('transactions').update(row).eq('id', id).eq('user_id', userId).select().maybeSingle();
+}
+
 export async function deleteTransactionRow(userId: string, id: string) {
   return supabase.from('transactions').delete().eq('id', id).eq('user_id', userId);
 }
