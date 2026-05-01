@@ -110,7 +110,7 @@ export default function App() {
       {/* bottom nav — profile is opened from top bar only */}
       {!adding && (
         <nav className="bottom-nav">
-          {TABS.map((t, i) => {
+          {TABS.map((t) => {
             if (!t) {
               return (
                 <div key="fab" className="nav-fab-wrap">
