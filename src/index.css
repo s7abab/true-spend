@@ -8,6 +8,46 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+:root {
+  /* Sheet / overlay header — uniform dismiss (×) control */
+  --close-btn-background: rgba(255, 77, 109, 0.12);
+  --close-btn-color: #d92d4a;
+  --close-btn-size: 36px;
+  --close-btn-radius: 10px;
+}
+
+.sheet-close-btn {
+  box-sizing: border-box;
+  width: var(--close-btn-size);
+  height: var(--close-btn-size);
+  border-radius: var(--close-btn-radius);
+  background: var(--close-btn-background);
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--close-btn-color);
+  flex-shrink: 0;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sheet-close-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.sheet-close-btn:focus-visible {
+  outline: 2px solid #0f0f12;
+  outline-offset: 2px;
+}
+
+.sheet-close-btn svg {
+  display: block;
+}
+
 body {
   height: 100%;
   font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;

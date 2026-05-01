@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { OVERLAY_TRANSITION, SHEET_TRANSITION } from '@/shared/motion/sheetMotion';
 import { IClose } from '@/shared/components/Icons';
 import { groupTxnsByDay } from '@/utils/historyGroup';
 import { TxnRow } from '@/features/history/components/HistoryScreen';
@@ -50,7 +51,7 @@ export function StatsDetailSheet({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
+      transition={OVERLAY_TRANSITION}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
@@ -58,27 +59,12 @@ export function StatsDetailSheet({
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+        transition={SHEET_TRANSITION}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sheet-handle" />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 8px' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: '#F4F5F7',
-              border: 'none',
-              display: 'grid',
-              placeItems: 'center',
-              color: '#6B6B80',
-              flexShrink: 0,
-            }}
-          >
+          <button type="button" className="sheet-close-btn" onClick={onClose} aria-label="Close">
             <IClose size={16} />
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>

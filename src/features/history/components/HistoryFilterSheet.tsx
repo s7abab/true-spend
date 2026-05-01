@@ -11,6 +11,7 @@ import {
   toDateInputValue,
 } from '@/features/history/utils/dateRange';
 import '@/features/history/styles/HistoryFilters.css';
+import { OVERLAY_TRANSITION, SHEET_TRANSITION } from '@/shared/motion/sheetMotion';
 
 type HistoryFilterSheetProps = {
   open: boolean;
@@ -148,7 +149,7 @@ export function HistoryFilterSheet({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={OVERLAY_TRANSITION}
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
           <motion.div
@@ -159,13 +160,13 @@ export function HistoryFilterSheet({
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+            transition={SHEET_TRANSITION}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sheet-handle" aria-hidden />
             <div className="history-filter-sheet__scroll">
               <header className="history-filter-header">
-                <button type="button" className="history-filter-header__close" onClick={onClose} aria-label="Close">
+                <button type="button" className="sheet-close-btn" onClick={onClose} aria-label="Close">
                   <IClose size={16} />
                 </button>
                 <div className="history-filter-header__text">

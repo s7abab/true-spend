@@ -6,6 +6,7 @@ import { StatsScreen } from '@/features/stats/components/StatsScreen';
 import { HistoryScreen } from '@/features/history/components/HistoryScreen';
 import { ProfileScreen } from '@/features/profile/components/ProfileScreen';
 import { AddTransactionScreen } from '@/features/transactions/components/AddTransactionScreen';
+import { SMOOTH_DECEL } from '@/shared/motion/sheetMotion';
 import { CategoriesScreen } from '@/features/categories/components/CategoriesScreen';
 import { SignInScreen } from '@/features/auth/components/SignInScreen';
 import { AppTopBar } from '@/shared/components/AppTopBar';
@@ -385,10 +386,10 @@ function AuthedApp({ user }: { user: User | null }) {
           <AnimatePresence mode="wait">
             <motion.div
               key={adding ? `add-${editingTxn?.id ?? 'new'}` : tab}
-              initial={{ opacity: 0, x: 8 }}
+              initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.36, ease: SMOOTH_DECEL }}
               style={{
                 flex: 1,
                 display: 'flex',

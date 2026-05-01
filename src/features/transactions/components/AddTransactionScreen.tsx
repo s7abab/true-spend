@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { IBackspace, ICheck, IClose, ICalendar, IPlus, ITrash, ICON_MAP } from '@/shared/components/Icons';
 import { parseDateInput, toDateInputValue } from '@/features/history/utils/dateRange';
+import { OVERLAY_TRANSITION, SHEET_TRANSITION } from '@/shared/motion/sheetMotion';
 import { formatDateLabel } from '@/utils/dateLabel';
 import { currencyPrefix } from '@/utils/money';
 import type { CategoryRow } from '@/features/categories/types';
@@ -184,11 +185,7 @@ export function AddTransactionScreen({
           disabled={busy}
           onClick={onClose}
           aria-label="Close"
-          style={{
-            width: 36, height: 36, borderRadius: 10, background: '#F4F5F7',
-            border: 'none', display: 'grid', placeItems: 'center',
-            color: '#6B6B80', flexShrink: 0, opacity: busy ? 0.5 : 1,
-          }}
+          className="sheet-close-btn"
         >
           <IClose size={16} />
         </button>
@@ -423,7 +420,7 @@ export function AddTransactionScreen({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.22 }}
+      transition={OVERLAY_TRANSITION}
       onClick={(e) => e.target === e.currentTarget && !busy && onClose()}
     >
       <motion.div
@@ -431,7 +428,7 @@ export function AddTransactionScreen({
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+        transition={SHEET_TRANSITION}
         // Swipe-to-dismiss: drag down past 120px or fast flick closes the sheet
         drag={busy ? false : 'y'}
         dragConstraints={{ top: 0 }}
