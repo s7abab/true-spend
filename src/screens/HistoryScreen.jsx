@@ -36,7 +36,7 @@ export function HistoryScreen({ txns }) {
   return (
     <div>
       {/* header */}
-      <div style={{ padding: '16px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="screen-header" style={{ padding: '16px 20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.7 }}>History</div>
         <button style={{ width: 38, height: 38, borderRadius: 999, background: '#fff', border: 'none', display: 'grid', placeItems: 'center', color: '#0F0F12', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
           <ISearch size={18} stroke={1.9} />

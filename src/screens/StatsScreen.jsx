@@ -63,7 +63,7 @@ export function StatsScreen({ txns }) {
   return (
     <div>
       {/* header */}
-      <div style={{ padding: '16px 20px 0' }}>
+      <div className="screen-header" style={{ padding: '16px 20px 12px' }}>
         <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.7 }}>Report</div>
       </div>
 

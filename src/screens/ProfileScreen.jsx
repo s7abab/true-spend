@@ -26,7 +26,7 @@ export function ProfileScreen() {
   return (
     <div>
       {/* header */}
-      <div style={{ padding: '16px 20px 0', fontSize: 26, fontWeight: 700, letterSpacing: -0.7 }}>Profile</div>
+      <div className="screen-header" style={{ padding: '16px 20px 12px', fontSize: 26, fontWeight: 700, letterSpacing: -0.7 }}>Profile</div>
 
       {/* avatar card */}
       <div style={{ margin: '16px 16px 0', background: '#fff', borderRadius: 20, padding: '20px 18px', display: 'flex', alignItems: 'center', gap: 16 }}>

@@ -34,7 +34,7 @@ export function HomeScreen({ txns, accent = '#0F0F12' }) {
   return (
     <div style={{ paddingTop: 0 }}>
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 8px' }}>
+      <div className="screen-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
             width: 40, height: 40, borderRadius: 999,
