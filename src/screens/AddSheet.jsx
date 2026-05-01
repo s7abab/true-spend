@@ -110,13 +110,13 @@ function initialKindAndCat(expense, income) {
 
 /* ── Main AddSheet ── */
 export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose, onSave, currency = 'INR', saving = false }) {
-  const init = useMemo(
-    () => initialKindAndCat(categoriesExpense, categoriesIncome),
-    [categoriesExpense, categoriesIncome],
+  const [kind,           setKind]           = useState(() =>
+    initialKindAndCat(categoriesExpense, categoriesIncome).kind,
   );
-  const [kind,           setKind]           = useState(init.kind);
   const [amount,         setAmount]         = useState('0');
-  const [catId,          setCatId]          = useState(init.catId);
+  const [catId,          setCatId]          = useState(() =>
+    initialKindAndCat(categoriesExpense, categoriesIncome).catId,
+  );
   const [note,           setNote]           = useState('');
   const [selectedDate,   setSelectedDate]   = useState(new Date(TODAY));
   const [showCal,        setShowCal]        = useState(false);
@@ -132,9 +132,14 @@ export function AddSheet({ accent, categoriesExpense, categoriesIncome, onClose,
   const hasExp = categoriesExpense.length > 0;
   const hasInc = categoriesIncome.length > 0;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const list = kind === 'expense' ? categoriesExpense : categoriesIncome;
-    if (list.some(c => c.id === catId)) return;
+    const validId = catId != null && list.some(c => c.id === catId);
+    if (validId) return;
+    if (list.length > 0) {
+      setCatId(list[0].id);
+      return;
+    }
     const next = initialKindAndCat(categoriesExpense, categoriesIncome);
     setKind(next.kind);
     setCatId(next.catId);
