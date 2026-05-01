@@ -1,0 +1,34 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  height: 100%;
+  /* prevent font size inflation on iOS */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  height: 100%;
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  background: #F2F2F7;
+  color: #0F0F12;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+#root {
+  height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  background: #E8E8ED;
+}
+
+button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+input  { font-family: inherit; }
+
+/* hide scrollbars everywhere */
+* { -ms-overflow-style: none; scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }

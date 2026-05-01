@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"/home/shabab/.claude/projects/-home-shabab-Desktop-truspend/e41b9b12-909c-4990-8547-7946c906c8a9/tool-results/webfetch-1777599888374-qg2q11.bin\" /tmp/design.gz)",
+      "Bash(gunzip -f /tmp/design.gz)",
+      "Read(//tmp/**)",
+      "Bash(mkdir -p /tmp/designbundle)",
+      "Bash(tar -xf /tmp/design -C /tmp/designbundle)",
+      "Bash(npm create *)",
+      "Bash(npm install *)"
+    ]
+  }
+}
