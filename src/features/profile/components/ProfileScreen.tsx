@@ -84,9 +84,6 @@ type SettingsItem = {
   danger?: boolean;
   soon?: boolean;
   onClick?: () => void | Promise<void>;
-  /** Static file download (e.g. brand asset) */
-  downloadHref?: string;
-  downloadFileName?: string;
   /** Inline `<select>` for currency (avoids whole-row tap). */
   currencyPicker?: boolean;
 };
@@ -190,12 +187,6 @@ export function ProfileScreen({
           title: 'Data',
           items: [
             { label: exporting ? 'Exporting…' : 'Export data', onClick: () => void exportData() },
-            {
-              label: 'Download app logo',
-              sub: 'SVG · same as app icon & favicon',
-              downloadHref: '/logo.svg',
-              downloadFileName: 'truspend-logo.svg',
-            },
             { label: 'Sign out', danger: true, onClick: () => void signOut() },
           ] satisfies SettingsItem[],
         },
@@ -261,9 +252,7 @@ export function ProfileScreen({
               );
             }
 
-            const isDownload = Boolean(it.downloadHref && !it.soon);
-            const interactive = typeof it.onClick === 'function' && !it.soon && !isDownload;
-            const rowClass = `settings-row${isDownload ? ' settings-row--link' : ''}`;
+            const interactive = typeof it.onClick === 'function' && !it.soon;
             const inner = (
               <>
                 <span
@@ -283,22 +272,10 @@ export function ProfileScreen({
                 </div>
               </>
             );
-            if (isDownload) {
-              return (
-                <a
-                  key={i}
-                  href={it.downloadHref}
-                  download={it.downloadFileName ?? 'truspend-logo.svg'}
-                  className={rowClass}
-                >
-                  {inner}
-                </a>
-              );
-            }
             return (
               <div
                 key={i}
-                className={rowClass}
+                className="settings-row"
                 onClick={interactive ? () => void it.onClick?.() : undefined}
                 onKeyDown={
                   interactive

@@ -961,16 +961,6 @@ button.txn-row.txn-row-btn:active {
   background-color: #F4F4F6;
 }
 
-a.settings-row.settings-row--link {
-  text-decoration: none;
-  color: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-a.settings-row.settings-row--link:active {
-  background: #fafafb;
-}
-
 /* ── Stats donut ── */
 /* Parent must be position: relative with explicit size (see StatsScreen). */
 .donut-center {
