@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { IClose } from '@/shared/components/Icons';
 import { DataErrorBanner } from '@/shared/components/DataErrorBanner';
 import type { CategoryRow } from '@/features/categories/types';
-import { geminiTxnChatTurn, formatTxnChatTranscript, type GeminiDraftTransaction } from '@/features/transactions/lib/geminiTxnChat';
+import {
+  formatTxnChatTranscript,
+  resolveTxnChatFromEnv,
+  type TxnChatDraftTransaction,
+} from '@/features/transactions/lib/txn-chat';
 import { matchCategoryRowByHint } from '@/features/transactions/lib/matchCategoryHint';
 import type { TransactionKind } from '@/types/ledger';
 import { currencyPrefix, formatMoney } from '@/utils/money';
@@ -109,7 +113,7 @@ function mergeChatDraft(base: ChatDraftRow, edit: DraftEdit | undefined): ChatDr
 }
 
 function buildChatDrafts(
-  txs: GeminiDraftTransaction[],
+  txs: TxnChatDraftTransaction[],
   catsExpense: CategoryRow[],
   catsIncome: CategoryRow[],
 ): ChatDraftRow[] {
@@ -245,7 +249,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
   const [sending, setSending] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? '';
+  const txnAi = useMemo(() => resolveTxnChatFromEnv(), []);
 
   const updateDraftEdit = useCallback((key: string, patch: DraftEdit) => {
     setDraftEdits((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
@@ -312,13 +316,13 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
       setTimeout(() => props.setToast(null), 3200);
       return;
     }
-    if (!apiKey) {
+    if (!txnAi.ok) {
       props.setToast({
         id: Date.now(),
         kind: 'error',
-        message: 'Set VITE_GEMINI_API_KEY in your .env file (Google AI Studio API key).',
+        message: txnAi.hint,
       });
-      setTimeout(() => props.setToast(null), 4800);
+      setTimeout(() => props.setToast(null), 5200);
       return;
     }
 
@@ -331,8 +335,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
       const prior = formatTxnChatTranscript(
         messages.map((m) => ({ role: m.role, text: m.text })),
       );
-      const result = await geminiTxnChatTurn({
-        apiKey,
+      const result = await txnAi.provider.chatTurn({
         priorTranscript: prior,
         userMessage: text,
         expenseLabels: props.catsExpense.map((c) => c.label),
@@ -360,7 +363,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
     } finally {
       setSending(false);
     }
-  }, [apiKey, input, sending, messages, props]);
+  }, [txnAi, input, sending, messages, props]);
 
   const removeDraftAtTurn = useCallback((turnId: string, draftIndex: number) => {
     if (sending || savingId) return;
@@ -443,13 +446,18 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
         <DataErrorBanner message={props.combinedError} onRetry={props.onRetryData} busy={props.retrying} />
       ) : null}
 
-      {!apiKey ? (
-        <div className="txn-chat-hint">
-          Add <code style={{ fontSize: 11 }}>VITE_GEMINI_API_KEY</code> to <code style={{ fontSize: 11 }}>.env</code> using a key from{' '}
+      {!txnAi.ok ? (
+        <div className="txn-chat-hint" style={{ textAlign: 'left', maxWidth: 420, margin: '0 auto' }}>
+          {txnAi.hint}{' '}
+          <a href="https://openrouter.ai/" target="_blank" rel="noreferrer">
+            OpenRouter
+          </a>{' '}
+          or{' '}
           <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">
             Google AI Studio
           </a>
-          . For production, proxy requests through your backend so the key stays server-side.
+          . Set <code style={{ fontSize: 11 }}>VITE_AI_PROVIDER</code> to <code style={{ fontSize: 11 }}>openrouter</code> or{' '}
+          <code style={{ fontSize: 11 }}>gemini</code>. For production, proxy requests through your backend so API keys stay server-side.
         </div>
       ) : null}
 
@@ -591,7 +599,8 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
                             <details
                               key={key}
                               className="txn-chat-draft txn-chat-draft--editable txn-chat-draft--collapsible"
-                              defaultOpen={i === 0}
+                              // React: initial open state for first row (valid DOM prop; eslint rule lags on <details>)
+                              {...(i === 0 ? { defaultOpen: true } : {})}
                             >
                               <summary className="txn-chat-draft-summary">
                                 <span className="txn-chat-draft-chevron" aria-hidden>

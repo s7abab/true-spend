@@ -39,6 +39,33 @@ npm run dev
 - `@supabase/supabase-js` for auth + data
 - Postgres (Supabase managed) with RLS policies for per-user isolation
 
+## AI transaction chat
+
+The **AI** tab uses a small **provider interface** (`TxnChatProvider` in `src/features/transactions/lib/txn-chat/`) so you can swap OpenRouter, direct Gemini, or add OpenAI/Anthropic later without changing the UI.
+
+Configure `.env` (see `.env.example`).
+
+### OpenRouter pricing tiers
+
+1. **Absolute cheapest — free models ($0)**  
+   OpenRouter exposes **free** variants of several families (examples include **DeepSeek**, **Llama**, **Qwen**, and others; the exact slugs change). Browse [models with “free”](https://openrouter.ai/models?q=free) and set `VITE_OPENROUTER_MODEL` to a slug that ends with **`:free`** (or whatever OpenRouter documents for that model). **Cost: $0.** Tradeoffs: **rate limits**, possible queues, and **lower reliability** than paid routes. **Best for:** testing, hobby projects, very low traffic.
+
+2. **Default in this repo (cheap paid)**  
+   If you omit `VITE_OPENROUTER_MODEL`, the app uses **`google/gemini-2.0-flash-001`**: usually a small dollar cost and better behaved JSON for transaction parsing than the smallest free tiers.
+
+3. **Other paid**  
+   Set `VITE_OPENROUTER_MODEL` to any slug from [OpenRouter models](https://openrouter.ai/models) (e.g. other Flash/GPT/Claude tiers).
+
+If `VITE_AI_PROVIDER` is unset, OpenRouter is used when `VITE_OPENROUTER_API_KEY` is set; otherwise direct Gemini when `VITE_GEMINI_API_KEY` is set.
+
+### Direct Gemini
+
+Set `VITE_AI_PROVIDER=gemini` and `VITE_GEMINI_API_KEY`; optional `VITE_GEMINI_MODEL`.
+
+### Adding a vendor
+
+Implement `TxnChatProvider` in `txn-chat/providers/`, then register it in `txn-chat/resolve-env.ts`.
+
 ## Code layout
 
 - `src/api/` — thin Supabase wrappers (`profiles`, `categories`, `transactions`) used by hooks.
