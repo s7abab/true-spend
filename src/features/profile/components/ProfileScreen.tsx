@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useAuth } from '@/features/auth/components/AuthContext';
+import { LegalFooterLinks } from '@/features/legal/components/LegalFooterLinks';
 import { IDownload } from '@/shared/components/Icons';
 import { resolveAvatarUrl } from '@/utils/avatar';
 import type { ProfileRow } from '@/features/profile/types';
@@ -323,6 +324,13 @@ export function ProfileScreen({
           })}
         </div>
       ))}
+
+      <div style={{ marginTop: 8, paddingTop: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#ACACB8', marginBottom: 8, paddingLeft: 4 }}>
+          Legal
+        </div>
+        <LegalFooterLinks variant="inline" />
+      </div>
 
       <div style={{ height: 16 }} />
     </div>

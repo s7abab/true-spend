@@ -10,6 +10,8 @@ interface ImportMetaEnv {
    * Local: http://localhost:5173
    */
   readonly VITE_PUBLIC_SITE_URL?: string;
+  /** Shown on About / legal pages (mailto). Optional; defaults in app if unset. */
+  readonly VITE_PUBLIC_CONTACT_EMAIL?: string;
   /**
    * Which LLM backend powers /chat. `openrouter` | `gemini`.
    * If unset, OpenRouter is used when `VITE_OPENROUTER_API_KEY` is set, else Gemini when `VITE_GEMINI_API_KEY` is set.

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { Route, Routes } from 'react-router-dom';
 import { SignInScreen } from '@/features/auth/components/SignInScreen';
 import { AppBootLoading } from '@/shared/components/loading';
 import { Toast, type ToastPayload } from '@/shared/components/Toast';
@@ -11,24 +12,40 @@ import '@/features/shell/styles/App.css';
 import { AnimatePresence } from 'framer-motion';
 import { ShellRoutes } from '@/features/shell/ShellRoutes';
 import { OfflineBanner } from '@/features/shell/components/OfflineBanner';
+import { AboutPage } from '@/features/legal/pages/AboutPage';
+import { PrivacyPage } from '@/features/legal/pages/PrivacyPage';
+import { TermsPage } from '@/features/legal/pages/TermsPage';
+import { CookiesPage } from '@/features/legal/pages/CookiesPage';
 
 const ACCENT = '#0F0F12';
 
 export default function App() {
   const { session, user, loading: authLoading } = useAuth();
 
-  if (authLoading) return <AppBootLoading />;
-  if (!session) {
-    return (
-      <div className="app-shell">
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <SignInScreen />
-        </div>
-      </div>
-    );
-  }
-
-  return <AuthedApp user={user} />;
+  return (
+    <Routes>
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/cookies" element={<CookiesPage />} />
+      <Route
+        path="*"
+        element={
+          authLoading ? (
+            <AppBootLoading />
+          ) : session ? (
+            <AuthedApp user={user} />
+          ) : (
+            <div className="app-shell">
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <SignInScreen />
+              </div>
+            </div>
+          )
+        }
+      />
+    </Routes>
+  );
 }
 
 function AuthedApp({ user }: { user: User | null }) {
