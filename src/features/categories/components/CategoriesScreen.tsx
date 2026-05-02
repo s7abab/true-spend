@@ -38,9 +38,13 @@ export function CategoriesScreen({
   const [newIcon, setNewIcon] = useState('dots');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const rows = useMemo(() => (kind === 'expense' ? lists.expense : lists.income), [kind, lists]);
+  const rows = useMemo(() => {
+    if (kind === 'expense') return lists.expense;
+    if (kind === 'income') return lists.income;
+    return lists.transfer;
+  }, [kind, lists]);
 
-  const hero = kind === 'expense' ? accent : '#22A06B';
+  const hero = kind === 'expense' ? accent : kind === 'income' ? '#22A06B' : '#6366F1';
   const accentVar = { '--cat-accent': hero } as CSSProperties;
 
   const startEdit = (c: CategoryRow) => {
@@ -80,10 +84,16 @@ export function CategoriesScreen({
     <div className="categories-tab categories-page" style={accentVar}>
       <div className="seg" style={{ margin: '0 16px 10px' }}>
         <div
-          className={`seg-thumb${kind === 'expense' ? ' seg-thumb--rose' : ' seg-thumb--emerald'}`}
-          style={{ left: kind === 'expense' ? 3 : '50%', width: 'calc(50% - 3px)' }}
+          className={`seg-thumb${
+            kind === 'expense' ? ' seg-thumb--rose' : kind === 'income' ? ' seg-thumb--emerald' : ' seg-thumb--violet'
+          }`}
+          style={{
+            left:
+              kind === 'expense' ? 3 : kind === 'income' ? 'calc(33.33%)' : 'calc(66.66%)',
+            width: 'calc(33.33% - 2px)',
+          }}
         />
-        {(['expense', 'income'] as const).map((k) => (
+        {(['expense', 'income', 'transfer'] as const).map((k) => (
           <button
             key={k}
             type="button"
@@ -223,7 +233,7 @@ export function CategoriesScreen({
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void addNew()}
-            placeholder={`Add ${kind === 'expense' ? 'expense' : 'income'} category`}
+            placeholder={`Add ${kind === 'expense' ? 'expense' : kind === 'income' ? 'income' : 'transfer'} category`}
           />
           <button
             type="button"

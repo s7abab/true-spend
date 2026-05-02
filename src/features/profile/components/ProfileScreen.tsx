@@ -156,7 +156,7 @@ export function ProfileScreen({
           items: [
             {
               label: 'Categories',
-              sub: 'Edit expense & income categories',
+              sub: 'Edit expense, income & transfer categories',
               onClick: onGoToCategories ? () => onGoToCategories() : undefined,
             },
           ] satisfies SettingsItem[],

@@ -35,15 +35,17 @@ function Keypad({ onPress }: { onPress: (k: string) => void }) {
   );
 }
 
-function initialKindAndCat(expense: CategoryRow[], income: CategoryRow[]) {
+function initialKindAndCat(expense: CategoryRow[], income: CategoryRow[], transfer: CategoryRow[]) {
   if (expense.length > 0) return { kind: 'expense' as TransactionKind, catId: expense[0]!.id };
   if (income.length > 0) return { kind: 'income' as TransactionKind, catId: income[0]!.id };
+  if (transfer.length > 0) return { kind: 'transfer' as TransactionKind, catId: transfer[0]!.id };
   return { kind: 'expense' as TransactionKind, catId: null as string | null };
 }
 
 function kindAndCatFromStorage(
   expense: CategoryRow[],
   income: CategoryRow[],
+  transfer: CategoryRow[],
 ): { kind: TransactionKind; catId: string | null } | null {
   const stored = readPersistedAddTxnKind();
   if (stored === 'income' && income.length > 0) {
@@ -51,6 +53,9 @@ function kindAndCatFromStorage(
   }
   if (stored === 'expense' && expense.length > 0) {
     return { kind: 'expense', catId: expense[0]!.id };
+  }
+  if (stored === 'transfer' && transfer.length > 0) {
+    return { kind: 'transfer', catId: transfer[0]!.id };
   }
   return null;
 }
@@ -75,6 +80,7 @@ type AddTransactionScreenProps = {
   accent: string;
   categoriesExpense: CategoryRow[];
   categoriesIncome: CategoryRow[];
+  categoriesTransfer: CategoryRow[];
   onClose: () => void;
   onSave: (t: AddTransactionSavePayload) => void;
   initialTxn?: MappedTxn | null;
@@ -91,6 +97,7 @@ export function AddTransactionScreen({
   accent,
   categoriesExpense,
   categoriesIncome,
+  categoriesTransfer,
   onClose,
   onSave,
   initialTxn = null,
@@ -113,18 +120,18 @@ export function AddTransactionScreen({
   }, []);
   const [kind, setKind] = useState<TransactionKind>(() => {
     if (initialTxn) return initialTxn.kind;
-    const fromLs = kindAndCatFromStorage(categoriesExpense, categoriesIncome);
+    const fromLs = kindAndCatFromStorage(categoriesExpense, categoriesIncome, categoriesTransfer);
     if (fromLs) return fromLs.kind;
-    return initialKindAndCat(categoriesExpense, categoriesIncome).kind;
+    return initialKindAndCat(categoriesExpense, categoriesIncome, categoriesTransfer).kind;
   });
   const [amount, setAmount] = useState(() =>
     initialTxn ? txnAmountKeypad(initialTxn.amount) : '0',
   );
   const [catId, setCatId] = useState<string | null>(() => {
     if (initialTxn) return initialTxn.cat;
-    const fromLs = kindAndCatFromStorage(categoriesExpense, categoriesIncome);
+    const fromLs = kindAndCatFromStorage(categoriesExpense, categoriesIncome, categoriesTransfer);
     if (fromLs) return fromLs.catId;
-    return initialKindAndCat(categoriesExpense, categoriesIncome).catId;
+    return initialKindAndCat(categoriesExpense, categoriesIncome, categoriesTransfer).catId;
   });
   const [note, setNote] = useState(() =>
     initialTxn ? (initialTxn.note || initialTxn.title || '') : '',
@@ -152,26 +159,42 @@ export function AddTransactionScreen({
 
   const hasExp = categoriesExpense.length > 0;
   const hasInc = categoriesIncome.length > 0;
+  const hasXfer = categoriesTransfer.length > 0;
 
   useLayoutEffect(() => {
-    const list = kind === 'expense' ? categoriesExpense : categoriesIncome;
+    const list =
+      kind === 'expense'
+        ? categoriesExpense
+        : kind === 'income'
+          ? categoriesIncome
+          : categoriesTransfer;
     const validId = catId != null && list.some((c) => c.id === catId);
     if (validId) return;
-    if (list.length > 0) { setCatId(list[0]!.id); return; }
-    const next = initialKindAndCat(categoriesExpense, categoriesIncome);
+    if (list.length > 0) {
+      setCatId(list[0]!.id);
+      return;
+    }
+    const next = initialKindAndCat(categoriesExpense, categoriesIncome, categoriesTransfer);
     setKind(next.kind);
     setCatId(next.catId);
-  }, [kind, catId, categoriesExpense, categoriesIncome]);
+  }, [kind, catId, categoriesExpense, categoriesIncome, categoriesTransfer]);
 
-  const cats = kind === 'expense' ? categoriesExpense : categoriesIncome;
+  const cats =
+    kind === 'expense'
+      ? categoriesExpense
+      : kind === 'income'
+        ? categoriesIncome
+        : categoriesTransfer;
   const cat = cats.find((c) => c.id === catId) || cats[0];
   const isExp = kind === 'expense';
-  const heroColor = isExp ? accent : '#22A06B';
+  const isXfer = kind === 'transfer';
+  const heroColor = isExp ? accent : isXfer ? '#6366F1' : '#22A06B';
   const curSym = currencyPrefix(currency);
   const busy = saving || deleting;
 
   const handleKind = (k: TransactionKind) => {
-    const list = k === 'expense' ? categoriesExpense : categoriesIncome;
+    const list =
+      k === 'expense' ? categoriesExpense : k === 'income' ? categoriesIncome : categoriesTransfer;
     if (!list.length) return;
     setKind(k);
     setCatId(list[0]?.id ?? null);
@@ -217,14 +240,16 @@ export function AddTransactionScreen({
   const sheetHandle = !asPage ? <div className="sheet-handle" /> : null;
   const dateMaxStr = toDateInputValue(getToday());
 
-  const expenseIncomeSeg = (
+  const kindSegIdx = kind === 'expense' ? 0 : kind === 'income' ? 1 : 2;
+  const threeKindSeg = (
     <div className="seg" style={{ flex: 1, minWidth: 0 }}>
       <div
-        className={`seg-thumb${isExp ? ' seg-thumb--rose' : ' seg-thumb--emerald'}`}
-        style={{ left: isExp ? 3 : '50%', width: 'calc(50% - 3px)' }}
+        className={`seg-thumb${isExp ? ' seg-thumb--rose' : isXfer ? ' seg-thumb--violet' : ' seg-thumb--emerald'}`}
+        style={{ left: kindSegIdx === 0 ? 3 : `calc(${kindSegIdx * (100 / 3)}%)`, width: 'calc(33.33% - 2px)' }}
       />
-      {(['expense', 'income'] as const).map((t) => {
-        const disabled = (t === 'expense' && !hasExp) || (t === 'income' && !hasInc);
+      {(['expense', 'income', 'transfer'] as const).map((t) => {
+        const disabled =
+          (t === 'expense' && !hasExp) || (t === 'income' && !hasInc) || (t === 'transfer' && !hasXfer);
         return (
           <button
             key={t}
@@ -299,11 +324,11 @@ export function AddTransactionScreen({
               </button>
             </div>
           ) : (
-            expenseIncomeSeg
+            threeKindSeg
           )}
         </div>
         {showAiEntry && entryTab === 'manual' ? (
-          <div style={{ display: 'flex', width: '100%' }}>{expenseIncomeSeg}</div>
+          <div style={{ display: 'flex', width: '100%' }}>{threeKindSeg}</div>
         ) : null}
       </div>
 
@@ -483,7 +508,11 @@ export function AddTransactionScreen({
         onPointerUp={(e) => { e.currentTarget.style.transform = ''; }}
       >
         {isEdit ? <ICheck size={20} stroke={2.6} /> : <IPlus size={20} stroke={2.6} />}
-        {saving ? 'Saving…' : isEdit ? 'Save changes' : `Add ${isExp ? 'expense' : 'income'}`}
+        {saving
+          ? 'Saving…'
+          : isEdit
+            ? 'Save changes'
+            : `Add ${isExp ? 'expense' : isXfer ? 'transfer' : 'income'}`}
       </button>
     </div>
   );

@@ -11,7 +11,8 @@ export function normalizeTxnChatJson(raw: unknown): TxnChatTurnResult {
   for (const row of txs) {
     if (!row || typeof row !== 'object') continue;
     const r = row as Record<string, unknown>;
-    const kind = r.kind === 'income' ? 'income' : 'expense';
+    const kind =
+      r.kind === 'income' ? 'income' : r.kind === 'transfer' ? 'transfer' : 'expense';
     const title = typeof r.title === 'string' ? r.title.trim() : '';
     if (!title) continue;
     const rawAmt = r.amount;

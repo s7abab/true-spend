@@ -1,6 +1,6 @@
 /** One parsed line item from the model (before category id resolution in the UI). */
 export type TxnChatDraftTransaction = {
-  kind: 'expense' | 'income';
+  kind: 'expense' | 'income' | 'transfer';
   title: string;
   /** Omitted or null when the user did not give an amount yet — ask, then fill on a follow-up. */
   amount?: number | null;
@@ -28,6 +28,8 @@ export type TxnChatTurnRequest = {
   expenseCategories: TxnChatCategoryForPrompt[];
   /** User's income categories — only these labels are valid for income rows. */
   incomeCategories: TxnChatCategoryForPrompt[];
+  /** User's transfer categories — only these labels are valid for transfer rows. */
+  transferCategories: TxnChatCategoryForPrompt[];
   currency: string;
   /** Local calendar YYYY-MM-DD */
   todayYmd?: string;

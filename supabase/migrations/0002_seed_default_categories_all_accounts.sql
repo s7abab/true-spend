@@ -16,8 +16,7 @@ with defaults (kind, label, icon, tint, sort_order) as (
     ('income',  'Salary',     'briefcase', '#22C55E', 0),
     ('income',  'Freelance',  'trend',     '#7C5CFF', 1),
     ('income',  'Gift',       'gift',      '#FF5C8A', 2),
-    ('income',  'Investment', 'trend',     '#0EA5C7', 3),
-    ('income',  'Other',      'dots',      '#7A7A86', 4)
+    ('income',  'Other',      'dots',      '#7A7A86', 3)
 )
 insert into public.categories (user_id, kind, label, icon, tint, sort_order)
 select

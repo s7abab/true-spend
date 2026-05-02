@@ -27,7 +27,8 @@ export function mapTxnRow(row: DbTransactionRow): MappedTxn {
   const occurredAt = row.occurred_at ? new Date(row.occurred_at) : new Date();
   return {
     id: row.id,
-    kind: row.kind === 'income' ? 'income' : 'expense',
+    kind:
+      row.kind === 'income' ? 'income' : row.kind === 'transfer' ? 'transfer' : 'expense',
     cat: row.category_id,
     amount: Number(row.amount),
     title: row.title || '',

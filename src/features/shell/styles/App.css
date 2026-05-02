@@ -745,6 +745,13 @@ button.txn-row.txn-row-btn:active {
     0 2px 12px rgba(100, 116, 139, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
+.seg-thumb.seg-thumb--violet {
+  background: linear-gradient(135deg, rgba(124, 92, 255, 0.38), rgba(199, 185, 255, 0.52));
+  border-color: rgba(255, 255, 255, 0.65);
+  box-shadow:
+    0 2px 14px rgba(99, 102, 241, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
 .seg-btn {
   position: relative;
   z-index: 2;

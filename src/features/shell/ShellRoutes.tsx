@@ -91,6 +91,7 @@ export type ShellRoutesProps = {
   lists: CatApi['lists'];
   catsExpense: CatApi['catsExpense'];
   catsIncome: CatApi['catsIncome'];
+  catsTransfer: CatApi['catsTransfer'];
   resolveCat: CatApi['resolveCat'];
   addCategory: CatApi['addCategory'];
   removeCategory: CatApi['removeCategory'];
@@ -123,6 +124,7 @@ function AiChatTabRoute(props: ShellRoutesProps) {
       onTransactionsSaved={() => {}}
       catsExpense={props.catsExpense}
       catsIncome={props.catsIncome}
+      catsTransfer={props.catsTransfer}
       addTransaction={props.addTransaction}
       currency={props.currency}
       combinedError={props.combinedError}
@@ -166,7 +168,7 @@ function TabShellLayout(props: ShellRoutesProps) {
     <div>
       <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>AI chat</div>
       <div style={{ fontSize: 12, color: '#ACACB8', fontWeight: 500, marginTop: 2 }}>
-        Describe income or expenses in plain language
+        Describe income, expenses, or transfers in plain language
       </div>
     </div>
   ) : activeTab === 'profile' ? (
@@ -292,7 +294,7 @@ function AddTransactionRoute(props: ShellRoutesProps) {
       navigate(-1);
       props.setToast({
         id: Date.now(),
-        kind: t.kind === 'income' ? 'income' : 'expense',
+        kind: t.kind === 'income' ? 'income' : t.kind === 'transfer' ? 'transfer' : 'expense',
         amount: t.amount,
       });
       setTimeout(() => props.setToast(null), 2400);
@@ -329,6 +331,7 @@ function AddTransactionRoute(props: ShellRoutesProps) {
                 accent={ACCENT}
                 categoriesExpense={props.catsExpense}
                 categoriesIncome={props.catsIncome}
+                categoriesTransfer={props.catsTransfer}
                 currency={props.currency}
                 saving={savingTxn}
                 deleting={false}
@@ -483,6 +486,7 @@ function EditTransactionRoute(props: ShellRoutesProps) {
                 accent={ACCENT}
                 categoriesExpense={props.catsExpense}
                 categoriesIncome={props.catsIncome}
+                categoriesTransfer={props.catsTransfer}
                 currency={props.currency}
                 saving={savingTxn}
                 deleting={deletingTxn}
@@ -553,6 +557,7 @@ export function ShellRoutes(props: ShellRoutesProps) {
             <StatsScreen
               categoriesExpense={props.catsExpense}
               categoriesIncome={props.catsIncome}
+              categoriesTransfer={props.catsTransfer}
               resolveCat={props.resolveCat}
               currency={props.currency}
               onTxnPress={openEditTxn}
@@ -566,6 +571,7 @@ export function ShellRoutes(props: ShellRoutesProps) {
               resolveCat={props.resolveCat}
               categoriesExpense={props.catsExpense}
               categoriesIncome={props.catsIncome}
+              categoriesTransfer={props.catsTransfer}
               currency={props.currency}
               onTxnPress={openEditTxn}
             />

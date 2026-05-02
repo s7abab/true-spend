@@ -9,6 +9,17 @@ function tokenize(s: string): string[] {
     .filter((t) => t.length > 1);
 }
 
+function pickList(
+  kind: TransactionKind,
+  categoriesExpense: CategoryRow[],
+  categoriesIncome: CategoryRow[],
+  categoriesTransfer: CategoryRow[],
+): CategoryRow[] {
+  if (kind === 'expense') return categoriesExpense;
+  if (kind === 'income') return categoriesIncome;
+  return categoriesTransfer;
+}
+
 /**
  * Picks the best category row for a free-text hint from the model (label synonym).
  */
@@ -17,10 +28,17 @@ export function matchCategoryRowByHint(
   kind: TransactionKind,
   categoriesExpense: CategoryRow[],
   categoriesIncome: CategoryRow[],
+  categoriesTransfer: CategoryRow[],
 ): CategoryRow {
-  const list = kind === 'expense' ? categoriesExpense : categoriesIncome;
+  const list = pickList(kind, categoriesExpense, categoriesIncome, categoriesTransfer);
   if (list.length === 0) {
-    throw new Error(kind === 'expense' ? 'No expense categories' : 'No income categories');
+    throw new Error(
+      kind === 'expense'
+        ? 'No expense categories'
+        : kind === 'income'
+          ? 'No income categories'
+          : 'No transfer categories',
+    );
   }
   const h = hint.trim().toLowerCase();
   if (!h) return list[0]!;

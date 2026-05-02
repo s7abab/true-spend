@@ -16,11 +16,11 @@ import {
 import '@/features/history/styles/HistoryFilters.css';
 import { TxnListSkeletonGroup, LoadingSpinner } from '@/shared/components/loading';
 
-/** Same labels/order as Stats kind segment (All / Spent / Income). */
 const HISTORY_KIND_SEG = [
   { id: 'all' as const, label: 'All' },
   { id: 'expense' as const, label: 'Spent' },
   { id: 'income' as const, label: 'Income' },
+  { id: 'transfer' as const, label: 'Transfer' },
 ] as const;
 
 export { TxnRow } from '@/shared/components/TxnRow';
@@ -31,6 +31,7 @@ type HistoryScreenProps = {
   resolveCat: ResolveCat;
   categoriesExpense: CategoryRow[];
   categoriesIncome: CategoryRow[];
+  categoriesTransfer: CategoryRow[];
   currency?: string;
   onTxnPress?: (txn: MappedTxn) => void;
 };
@@ -39,6 +40,7 @@ export function HistoryScreen({
   resolveCat,
   categoriesExpense,
   categoriesIncome,
+  categoriesTransfer,
   currency = 'INR',
   onTxnPress,
 }: HistoryScreenProps) {
@@ -108,10 +110,18 @@ export function HistoryScreen({
 
       <div className="seg" style={{ margin: '14px 16px 0' }}>
         <div
-          className={`seg-thumb${listFilter.kind === 'all' ? ' seg-thumb--slate' : listFilter.kind === 'expense' ? ' seg-thumb--rose' : ' seg-thumb--emerald'}`}
+          className={`seg-thumb${
+            listFilter.kind === 'all'
+              ? ' seg-thumb--slate'
+              : listFilter.kind === 'expense'
+                ? ' seg-thumb--rose'
+                : listFilter.kind === 'income'
+                  ? ' seg-thumb--emerald'
+                  : ' seg-thumb--violet'
+          }`}
           style={{
-            left: historyKindSegIdx === 0 ? 3 : `calc(${historyKindSegIdx * (100 / 3)}%)`,
-            width: 'calc(33.33% - 2px)',
+            left: historyKindSegIdx === 0 ? 3 : `calc(${historyKindSegIdx * 25}%)`,
+            width: 'calc(25% - 2px)',
           }}
         />
         {HISTORY_KIND_SEG.map((f) => (
@@ -198,6 +208,7 @@ export function HistoryScreen({
         applied={fullQuery}
         categoriesExpense={categoriesExpense}
         categoriesIncome={categoriesIncome}
+        categoriesTransfer={categoriesTransfer}
         onClose={() => setFilterSheetOpen(false)}
         onApply={(patch) => setListFilter((prev) => ({ ...prev, ...patch }))}
         onClear={() => {

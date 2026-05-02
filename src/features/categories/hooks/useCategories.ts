@@ -26,7 +26,7 @@ function compareCats(a: CategoryRow, b: CategoryRow): number {
   return (a.label || '').localeCompare(b.label || '');
 }
 
-export type CategoryLists = { expense: CategoryRow[]; income: CategoryRow[] };
+export type CategoryLists = { expense: CategoryRow[]; income: CategoryRow[]; transfer: CategoryRow[] };
 
 export function useCategories() {
   const { user } = useAuth();
@@ -115,15 +115,16 @@ export function useCategories() {
     onSuccess: invalidate,
   });
 
-  const { catsExpense, catsIncome } = useMemo(() => {
+  const { catsExpense, catsIncome, catsTransfer } = useMemo(() => {
     const expense = rows.filter((r) => rowKind(r) === 'expense').sort(compareCats);
     const income = rows.filter((r) => rowKind(r) === 'income').sort(compareCats);
-    return { catsExpense: expense, catsIncome: income };
+    const transfer = rows.filter((r) => rowKind(r) === 'transfer').sort(compareCats);
+    return { catsExpense: expense, catsIncome: income, catsTransfer: transfer };
   }, [rows]);
 
   const lists = useMemo<CategoryLists>(
-    () => ({ expense: catsExpense, income: catsIncome }),
-    [catsExpense, catsIncome],
+    () => ({ expense: catsExpense, income: catsIncome, transfer: catsTransfer }),
+    [catsExpense, catsIncome, catsTransfer],
   );
 
   const byId = useMemo(() => {
@@ -138,20 +139,23 @@ export function useCategories() {
         const found = byId.get(id);
         if (found) return found;
       }
-      const list = kind === 'income' ? catsIncome : catsExpense;
-      return list[list.length - 1] || { ...FALLBACK_CAT, kind: (kind as TransactionKind) || 'expense' };
+      const list =
+        kind === 'income' ? catsIncome : kind === 'transfer' ? catsTransfer : catsExpense;
+      return (
+        list[list.length - 1] || { ...FALLBACK_CAT, kind: (kind as TransactionKind) || 'expense' }
+      );
     },
-    [byId, catsExpense, catsIncome],
+    [byId, catsExpense, catsIncome, catsTransfer],
   );
 
   const addCategory = useCallback(
     async (kind: TransactionKind, label: string, icon = 'dots') => {
       if (!userId) return { error: new Error('not signed in') as Error, data: null };
       const t = (label || '').trim();
-      if (!t || (kind !== 'expense' && kind !== 'income')) {
+      if (!t || (kind !== 'expense' && kind !== 'income' && kind !== 'transfer')) {
         return { error: new Error('invalid input'), data: null };
       }
-      const list = kind === 'expense' ? catsExpense : catsIncome;
+      const list = kind === 'expense' ? catsExpense : kind === 'income' ? catsIncome : catsTransfer;
       const sort_order = list.length ? Math.max(...list.map((c) => c.sort_order)) + 1 : 0;
       const tint = CATEGORY_TINTS[list.length % CATEGORY_TINTS.length]!;
       const ic = sanitizeCategoryIcon(icon);
@@ -169,7 +173,7 @@ export function useCategories() {
         return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
       }
     },
-    [userId, catsExpense, catsIncome, addMutation],
+    [userId, catsExpense, catsIncome, catsTransfer, addMutation],
   );
 
   const updateCategory = useCallback(
@@ -237,6 +241,7 @@ export function useCategories() {
   return {
     catsExpense,
     catsIncome,
+    catsTransfer,
     lists,
     loading: listQuery.isPending,
     reordering: reorderMutation.isPending,

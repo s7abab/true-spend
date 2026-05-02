@@ -17,7 +17,7 @@ export type StatsDetailFilter = {
   rangeKey: string;
   fromIso: string;
   toIsoExclusive: string;
-  kind: 'all' | 'expense' | 'income';
+  kind: 'all' | 'expense' | 'income' | 'transfer';
   search: string;
   /** Stable key for React Query (e.g. "cat:uuid" | "uncat" | "all") */
   categoryScopeKey: string;

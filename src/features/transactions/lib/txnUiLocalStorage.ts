@@ -27,12 +27,12 @@ export function writePersistedAddEntryTab(tab: PersistedAddEntryTab): void {
   }
 }
 
-export type PersistedAddTxnKind = 'expense' | 'income';
+export type PersistedAddTxnKind = 'expense' | 'income' | 'transfer';
 
 export function readPersistedAddTxnKind(): PersistedAddTxnKind | null {
   try {
     const v = localStorage.getItem(LS_ADD_KIND);
-    if (v === 'expense' || v === 'income') return v;
+    if (v === 'expense' || v === 'income' || v === 'transfer') return v;
   } catch {
     /* quota / private mode */
   }
@@ -48,7 +48,7 @@ export function writePersistedAddTxnKind(kind: PersistedAddTxnKind): void {
 }
 
 export type PersistedChatDraft = {
-  kind: 'expense' | 'income';
+  kind: 'expense' | 'income' | 'transfer';
   title: string;
   /** null = user still needs to enter amount in AI chat */
   amount: number | null;

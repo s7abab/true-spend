@@ -1,4 +1,4 @@
-export type HistoryKindFilter = 'all' | 'expense' | 'income';
+export type HistoryKindFilter = 'all' | 'expense' | 'income' | 'transfer';
 
 /** Server-backed filters for the history transaction list (search is applied separately, debounced). */
 export type HistoryTransactionQuery = {

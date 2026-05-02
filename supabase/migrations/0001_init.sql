@@ -120,8 +120,7 @@ begin
     (new.id, 'income',  'Salary',     'briefcase', '#22C55E', 0),
     (new.id, 'income',  'Freelance',  'trend',     '#7C5CFF', 1),
     (new.id, 'income',  'Gift',       'gift',      '#FF5C8A', 2),
-    (new.id, 'income',  'Investment', 'trend',     '#0EA5C7', 3),
-    (new.id, 'income',  'Other',      'dots',      '#7A7A86', 4);
+    (new.id, 'income',  'Other',      'dots',      '#7A7A86', 3);
 
   return new;
 end;

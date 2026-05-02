@@ -19,6 +19,7 @@ type HistoryFilterSheetProps = {
   applied: HistoryTransactionQuery;
   categoriesExpense: CategoryRow[];
   categoriesIncome: CategoryRow[];
+  categoriesTransfer: CategoryRow[];
   onClose: () => void;
   onApply: (patch: HistoryFilterFields) => void;
   onClear: () => void;
@@ -34,7 +35,8 @@ function defaultDraftFromApplied(a: HistoryTransactionQuery): HistoryFilterField
 function kindSegIndex(kind: HistoryKindFilter): number {
   if (kind === 'all') return 0;
   if (kind === 'expense') return 1;
-  return 2;
+  if (kind === 'income') return 2;
+  return 3;
 }
 
 export function HistoryFilterSheet({
@@ -42,6 +44,7 @@ export function HistoryFilterSheet({
   applied,
   categoriesExpense,
   categoriesIncome,
+  categoriesTransfer,
   onClose,
   onApply,
   onClear,
@@ -96,8 +99,9 @@ export function HistoryFilterSheet({
   const cats = useMemo(() => {
     if (draft.kind === 'income') return categoriesIncome;
     if (draft.kind === 'expense') return categoriesExpense;
-    return [...categoriesExpense, ...categoriesIncome];
-  }, [draft.kind, categoriesExpense, categoriesIncome]);
+    if (draft.kind === 'transfer') return categoriesTransfer;
+    return [...categoriesExpense, ...categoriesIncome, ...categoriesTransfer];
+  }, [draft.kind, categoriesExpense, categoriesIncome, categoriesTransfer]);
 
   const parseAmount = (s: string): number | null => {
     const t = s.trim();
@@ -179,13 +183,21 @@ export function HistoryFilterSheet({
                 <div className="history-filter-section__label">TYPE</div>
                 <div className="seg" style={{ width: '100%' }}>
                   <div
-                    className={`seg-thumb${draft.kind === 'all' ? ' seg-thumb--slate' : draft.kind === 'expense' ? ' seg-thumb--rose' : ' seg-thumb--emerald'}`}
+                    className={`seg-thumb${
+                      draft.kind === 'all'
+                        ? ' seg-thumb--slate'
+                        : draft.kind === 'expense'
+                          ? ' seg-thumb--rose'
+                          : draft.kind === 'income'
+                            ? ' seg-thumb--emerald'
+                            : ' seg-thumb--violet'
+                    }`}
                     style={{
-                      left: kindSegIndex(draft.kind) === 0 ? 3 : `calc(${kindSegIndex(draft.kind) * (100 / 3)}%)`,
-                      width: 'calc(33.33% - 2px)',
+                      left: kindSegIndex(draft.kind) === 0 ? 3 : `calc(${kindSegIndex(draft.kind) * 25}%)`,
+                      width: 'calc(25% - 2px)',
                     }}
                   />
-                  {(['all', 'expense', 'income'] as const).map((k) => (
+                  {(['all', 'expense', 'income', 'transfer'] as const).map((k) => (
                     <button
                       key={k}
                       type="button"
@@ -200,7 +212,7 @@ export function HistoryFilterSheet({
                       }
                       style={{ color: draft.kind === k ? '#0F0F12' : '#ACACB8' }}
                     >
-                      {k === 'all' ? 'All' : k === 'expense' ? 'Spent' : 'Income'}
+                      {k === 'all' ? 'All' : k === 'expense' ? 'Spent' : k === 'income' ? 'Income' : 'Transfer'}
                     </button>
                   ))}
                 </div>

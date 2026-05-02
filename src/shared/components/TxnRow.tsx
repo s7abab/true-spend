@@ -19,6 +19,7 @@ export function TxnRow({
 }) {
   const cat = resolveCat(txn.cat, txn.kind);
   const isInc = txn.kind === 'income';
+  const isXfer = txn.kind === 'transfer';
   const amt = formatMoney(txn.amount, currency);
   const body = (
     <>
@@ -34,8 +35,8 @@ export function TxnRow({
         </div>
         <div className="txn-time">{txn.time}</div>
       </div>
-      <div className="txn-amount" style={{ color: isInc ? '#22A06B' : '#0F0F12' }}>
-        {isInc ? '+' : '−'}
+      <div className="txn-amount" style={{ color: isInc ? '#22A06B' : isXfer ? '#6366F1' : '#0F0F12' }}>
+        {isInc ? '+' : isXfer ? '↔' : '−'}
         {amt}
       </div>
     </>

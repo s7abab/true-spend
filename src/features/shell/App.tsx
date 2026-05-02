@@ -42,6 +42,7 @@ function AuthedApp({ user }: { user: User | null }) {
   const {
     catsExpense,
     catsIncome,
+    catsTransfer,
     lists,
     resolveCat,
     addCategory,
@@ -88,7 +89,9 @@ function AuthedApp({ user }: { user: User | null }) {
   }, [refetchProfile, refetchCategories, refetchTransactions]);
 
   const canOpenAdd =
-    !categoriesLoading && !categoriesError && (catsExpense.length > 0 || catsIncome.length > 0);
+    !categoriesLoading &&
+    !categoriesError &&
+    (catsExpense.length > 0 || catsIncome.length > 0 || catsTransfer.length > 0);
 
   if (initialDataPending) {
     return <AppBootLoading />;
@@ -101,6 +104,7 @@ function AuthedApp({ user }: { user: User | null }) {
     lists,
     catsExpense,
     catsIncome,
+    catsTransfer,
     resolveCat,
     addCategory,
     removeCategory,
