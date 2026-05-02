@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import {
   Navigate,
-  NavLink,
   Outlet,
   Route,
   Routes,
@@ -13,7 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import type { DbTransactionRow, MappedTxn } from '@/utils/txnMap';
 import { mapTxnRow } from '@/utils/txnMap';
-import * as transactionsApi from '@/features/transactions/api/transactions';
+import { fetchTransactionById } from '@/features/transactions/api/transactions';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { AppBootLoading } from '@/shared/components/loading';
 import { AppTopBar } from '@/shared/components/AppTopBar';
@@ -205,20 +204,28 @@ function TabShellLayout(props: ShellRoutesProps) {
             );
           }
           const Icon = t.Icon;
+          const tabActive = activeTab === t.id || (t.id === 'profile' && isCategories);
+          const goTab = () => {
+            if (location.pathname === t.to) return;
+            void navigate(t.to);
+          };
           return (
-            <NavLink
+            <button
               key={t.id}
-              to={t.to}
-              end={t.id === 'home'}
+              type="button"
               data-tab={t.id}
-              className={({ isActive }) =>
-                `nav-btn${isActive || (t.id === 'profile' && isCategories) ? ' active' : ''}`
-              }
-              aria-current={activeTab === t.id ? 'page' : undefined}
+              className={`nav-btn${tabActive ? ' active' : ''}`}
+              aria-current={tabActive ? 'page' : undefined}
+              /* Touch: navigate on pointerdown so the first tap is not lost to iOS click delays / SVG hit-target quirks. */
+              onPointerDown={(e) => {
+                if (e.pointerType !== 'touch') return;
+                goTab();
+              }}
+              onClick={goTab}
             >
               <Icon size={22} stroke={activeTab === t.id ? 2.3 : 1.8} />
               {t.label}
-            </NavLink>
+            </button>
           );
         })}
       </nav>
@@ -365,7 +372,7 @@ function EditTransactionRoute(props: ShellRoutesProps) {
   const detailQuery = useQuery({
     queryKey: userId && txnId ? queryKeys.transactions.detail(userId, txnId) : ['transactions', 'detail', 'idle'],
     queryFn: async ({ signal }) => {
-      const { data, error } = await transactionsApi.fetchTransactionById(userId!, txnId!, { signal });
+      const { data, error } = await fetchTransactionById(userId!, txnId!, { signal });
       if (error) throw error;
       return data;
     },
@@ -534,7 +541,7 @@ export function ShellRoutes(props: ShellRoutesProps) {
       <Route path="/chat" element={<Navigate to="/add" replace />} />
       <Route path="/edit/:txnId" element={<EditTransactionRoute {...props} />} />
 
-      <Route element={<TabShellLayout {...props} />}>
+      <Route path="/" element={<TabShellLayout {...props} />}>
         <Route
           index
           element={
