@@ -33,7 +33,7 @@ export const TXN_CHAT_RESPONSE_JSON_SCHEMA = {
           amount: {
             type: 'number',
             description:
-              'Positive number only if known; omit if unknown (e.g. other lines in the same message have amounts).',
+              'Positive number in the org currency only if known; omit if unknown (e.g. other lines in the same message have amounts).',
           },
           category_label: {
             type: 'string',
@@ -86,18 +86,20 @@ Never invent, paraphrase, or substitute a category name. If unsure, omit \`categ
 Kind rules (summary):
 - **expense**: real money spent with no expectation of return — food, transport, shopping, bills, subscriptions, entertainment, EMI payments (log full EMI as expense; do not split principal/interest), insurance premiums, fees.
 - **transfer**: money moving between own pockets / structures — SIP, MF or stock purchase, FD/RD/PPF/NPS/crypto/gold purchase, savings moved, loan given to someone, **credit card bill payment**, chit-fund monthly contribution.
-- **income**: real money received — salary, freelance, refunds received, interest/dividend, investment proceeds **in** (FD maturity, MF redemption, stock sale), chit payout received, loan repayment received, gifts.
+- **income**: real money received — salary, freelance, refunds received, interest/dividend, cash from investments (FD maturity, MF redemption, stock sale), chit payout received, loan repayment received, gifts.
 
-Indian cues: "paid EMI", "home loan EMI", phone/BNPL EMI → expense (full amount). "SIP", "bought MF/stocks", "FD deposit", "paid chit installment" → transfer. "FD matured", "redeemed MF", "sold gold", "dividend received" → income. "Paid credit card bill" → transfer. "Got chit amount" with no amount → return transactions: [] and ask for the amount in reply.
+Important: **Do not use \`income\` for money you contribute to investments** (monthly SIP, buying MF/units/stocks, opening or topping an FD, PPF, NPS, crypto buys). Those are always **\`transfer\`**. Use **\`income\`** only when cash actually hits you (payout, salary credit, sale/redemption proceeds, dividend credited, etc.).
+
+Indian cues (examples): **Expense** — "paid EMI", "home loan EMI", phone/BNPL EMI (full amount). **Transfer** — SIP, bought MF/stocks, FD deposit, paid chit installment, paid credit card bill. **Income** — FD matured, redeemed MF, sold gold, dividend received. If the user says they received a chit payout but gives no amount, return \`transactions: []\` and ask for the amount in \`reply\`.
 
 Parsing:
 - Comma-separated or chained distinct events → separate transactions. Cap at 20 per turn.
-- Extract \`amount\` only for clear money figures ("120", "₹80", "10k"=10000, "1.5L"=150000). Hedged amounts ("around 500") → omit amount; explain in reply.
+- \`amount\` must be a **positive** number in ${opts.currency} when stated; use clear figures only ("120", "₹80", "10k"=10000, "1.5L"=150000). Hedged amounts ("around 500") → omit amount; explain in reply.
 - If **every** line lacks a money amount, return \`transactions: []\` and ask for amounts in \`reply\`. If **some** lines have amounts, emit one object per line (omit amount only where unknown).
 - "today" / "yesterday" / weekdays → date relative to ${opts.todayYmd}; otherwise omit date for default today.
 - If the user is correcting or undoing a prior log, return \`transactions: []\` and say edits must be done in the app.
 
-Output JSON only (see footer). \`reply\` in the same language as the user when they write in a regional language.`;
+Output JSON only (no markdown fences). The user message ends with the exact object shape to follow. Write \`reply\` in the same language as the user when they use a regional language.`;
 }
 
 /** Appended for providers that only support generic json_object (no JSON schema enforcement). */

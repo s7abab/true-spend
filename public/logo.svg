@@ -1,5 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="logoTitle">
-  <title id="logoTitle">Truspend</title>
-  <circle cx="50" cy="50" r="50" fill="#0F0F12" />
-  <circle cx="50" cy="50" r="40" fill="none" stroke="#FFFFFF" stroke-width="10" />
+<svg width="100%" viewBox="0 0 680 680" role="img" xmlns="http://www.w3.org/2000/svg" style="">
+  <title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">TrueSpend app icon centered</title>
+  <desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">TrueSpend two tone split card app icon perfectly centered</desc>
+
+  <!-- Icon base -->
+  <rect x="140" y="140" width="400" height="400" rx="96" fill="#0d0d0d" style="fill:rgb(13, 13, 13);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Card centered inside icon: 240x150 card, centered at 340,340 -->
+  <!-- Card white full -->
+  <rect x="220" y="265" width="240" height="150" rx="20" fill="#ffffff" style="fill:rgb(255, 255, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Card black top half -->
+  <rect x="220" y="265" width="240" height="76" rx="20" fill="#0d0d0d" stroke="#ffffff" stroke-width="2.5" style="fill:rgb(13, 13, 13);stroke:rgb(255, 255, 255);color:rgb(255, 255, 255);stroke-width:2.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- Fill radius gap -->
+  <rect x="220" y="300" width="240" height="41" fill="#0d0d0d" style="fill:rgb(13, 13, 13);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Chip centered-left on dark half -->
+  <rect x="244" y="284" width="38" height="28" rx="7" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.7" style="fill:none;stroke:rgb(255, 255, 255);color:rgb(255, 255, 255);stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.7;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <line x1="244" y1="298" x2="282" y2="298" stroke="#ffffff" stroke-width="1.2" opacity="0.4" style="fill:rgb(0, 0, 0);stroke:rgb(255, 255, 255);color:rgb(255, 255, 255);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.4;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <line x1="263" y1="284" x2="263" y2="312" stroke="#ffffff" stroke-width="1.2" opacity="0.4" style="fill:rgb(0, 0, 0);stroke:rgb(255, 255, 255);color:rgb(255, 255, 255);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.4;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Contactless arcs right on dark half -->
+  <path d="M400,284 A14,14 0 0,1 400,312" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" opacity="0.7" style="fill:none;stroke:rgb(255, 255, 255);color:rgb(255, 255, 255);stroke-width:2.2px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.7;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <path d="M413,277 A26,26 0 0,1 413,319" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" opacity="0.4" style="fill:none;stroke:rgb(255, 255, 255);color:rgb(255, 255, 255);stroke-width:2.2px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.4;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <path d="M426,270 A38,38 0 0,1 426,326" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" opacity="0.18" style="fill:none;stroke:rgb(255, 255, 255);color:rgb(255, 255, 255);stroke-width:2.2px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.18;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Divider -->
+  <line x1="220" y1="341" x2="460" y2="341" stroke="#ffffff" stroke-width="1" opacity="0.1" style="fill:rgb(0, 0, 0);stroke:rgb(255, 255, 255);color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Amount lines on white half -->
+  <line x1="244" y1="368" x2="336" y2="368" stroke="#0d0d0d" stroke-width="7" stroke-linecap="round" style="fill:rgb(0, 0, 0);stroke:rgb(13, 13, 13);color:rgb(255, 255, 255);stroke-width:7px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <line x1="350" y1="368" x2="396" y2="368" stroke="#0d0d0d" stroke-width="7" stroke-linecap="round" opacity="0.15" style="fill:rgb(0, 0, 0);stroke:rgb(13, 13, 13);color:rgb(255, 255, 255);stroke-width:7px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.15;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <line x1="244" y1="393" x2="304" y2="393" stroke="#0d0d0d" stroke-width="4" stroke-linecap="round" opacity="0.15" style="fill:rgb(0, 0, 0);stroke:rgb(13, 13, 13);color:rgb(255, 255, 255);stroke-width:4px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.15;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <line x1="316" y1="393" x2="360" y2="393" stroke="#0d0d0d" stroke-width="4" stroke-linecap="round" opacity="0.08" style="fill:rgb(0, 0, 0);stroke:rgb(13, 13, 13);color:rgb(255, 255, 255);stroke-width:4px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.08;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
 </svg>

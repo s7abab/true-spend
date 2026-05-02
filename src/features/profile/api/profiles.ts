@@ -2,8 +2,13 @@ import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/shared/lib/supabase';
 import type { ProfileRow } from '@/features/profile/types';
 
-export function profileRowFromUser(user: User | null | undefined): ProfileRow | null {
+export function profileRowFromUser(
+  user: User | null | undefined,
+  /** When creating a profile client-side, prefer a region-based default (e.g. from IP). */
+  initialCurrency?: string | null,
+): ProfileRow | null {
   if (!user) return null;
+  const cur = (initialCurrency && String(initialCurrency).trim()) || 'INR';
   return {
     id: user.id,
     email: user.email ?? null,
@@ -13,7 +18,7 @@ export function profileRowFromUser(user: User | null | undefined): ProfileRow | 
     avatar_url: (user.user_metadata?.avatar_url as string | undefined)
       ?? (user.user_metadata?.picture as string | undefined)
       ?? null,
-    currency: 'INR',
+    currency: cur.toUpperCase(),
   };
 }
 

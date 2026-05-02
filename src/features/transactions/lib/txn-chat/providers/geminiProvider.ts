@@ -25,7 +25,8 @@ export function createGeminiTxnChatProvider(opts: GeminiTxnChatProviderOptions):
     async chatTurn(req: TxnChatTurnRequest): Promise<TxnChatTurnResult> {
       const args = txnChatInstructionArgs(req);
       const systemInstruction = buildTxnChatSystemInstruction(args);
-      const body = buildTxnChatUserPayload(req, { jsonReminder: false });
+      // Same tail as OpenRouter: exact JSON shape at end of contents (recency + matches system text).
+      const body = buildTxnChatUserPayload(req, { jsonReminder: true });
 
       const ai = new GoogleGenAI({ apiKey: opts.apiKey });
       const response = await ai.models.generateContent({

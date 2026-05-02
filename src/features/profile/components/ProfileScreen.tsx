@@ -5,8 +5,7 @@ import type { ProfileRow } from '@/features/profile/types';
 import type { User } from '@supabase/supabase-js';
 import type { CategoryLists } from '@/features/categories/hooks/useCategories';
 import type { MappedTxn } from '@/utils/txnMap';
-
-const CURRENCIES = ['INR', 'USD', 'EUR'] as const;
+import { currencyOptionLabel, listSelectableCurrencyCodes } from '@/utils/currencyList';
 
 function initialsOf(name = '', email = ''): string {
   const src = (name || email || '').trim();
@@ -88,6 +87,8 @@ type SettingsItem = {
   /** Static file download (e.g. brand asset) */
   downloadHref?: string;
   downloadFileName?: string;
+  /** Inline `<select>` for currency (avoids whole-row tap). */
+  currencyPicker?: boolean;
 };
 
 type ProfileScreenProps = {
@@ -118,15 +119,24 @@ export function ProfileScreen({
     || 'There';
   const email = profile?.email || user?.email || '';
   const avatarUrl = resolveAvatarUrl(profile, user);
-  const currency = profile?.currency || 'INR';
+  const currency = (profile?.currency || 'INR').toUpperCase();
   const initials = initialsOf(fullName, email);
 
-  const cycleCurrency = useCallback(async () => {
-    const idx = CURRENCIES.indexOf((currency || 'INR').toUpperCase() as (typeof CURRENCIES)[number]);
-    const next = CURRENCIES[(Math.max(0, idx) + 1) % CURRENCIES.length]!;
-    const { error } = await updateProfile({ currency: next });
-    if (error) console.error('update currency failed', error);
-  }, [updateProfile, currency]);
+  const currencyCodes = useMemo(() => listSelectableCurrencyCodes(), []);
+
+  const currencySelectOptions = useMemo(() => {
+    if (currencyCodes.includes(currency)) return currencyCodes;
+    return [currency, ...currencyCodes];
+  }, [currencyCodes, currency]);
+
+  const onCurrencyChange = useCallback(
+    async (code: string) => {
+      const next = code.trim().toUpperCase();
+      const { error } = await updateProfile({ currency: next });
+      if (error) console.error('update currency failed', error);
+    },
+    [updateProfile],
+  );
 
   const exportData = useCallback(async () => {
     if (!onExportTransactions || exportBusy.current) return;
@@ -172,11 +182,7 @@ export function ProfileScreen({
           title: 'Preferences',
           items: [
             { label: 'Notifications', sub: 'Coming soon', soon: true },
-            {
-              label: 'Currency',
-              sub: `${currency} · tap to change`,
-              onClick: () => void cycleCurrency(),
-            },
+            { label: 'Currency', currencyPicker: true },
             { label: 'Appearance', sub: 'Coming soon', soon: true },
           ] satisfies SettingsItem[],
         },
@@ -194,7 +200,7 @@ export function ProfileScreen({
           ] satisfies SettingsItem[],
         },
       ] as { title: string; items: SettingsItem[] }[],
-    [currency, cycleCurrency, exportData, exporting, signOut, onGoToCategories],
+    [currency, exportData, exporting, signOut, onGoToCategories],
   );
 
   return (
@@ -234,6 +240,27 @@ export function ProfileScreen({
       {groups.map((group, gi) => (
         <div key={gi} className="settings-group">
           {group.items.map((it, i) => {
+            if (it.currencyPicker) {
+              return (
+                <div key={i} className="settings-row settings-row--currency">
+                  <span className="settings-row__label">{it.label}</span>
+                  <select
+                    className="settings-currency-select"
+                    aria-label="Currency"
+                    value={currency}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => void onCurrencyChange(e.target.value)}
+                  >
+                    {currencySelectOptions.map((code) => (
+                      <option key={code} value={code} title={currencyOptionLabel(code)}>
+                        {code}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            }
+
             const isDownload = Boolean(it.downloadHref && !it.soon);
             const interactive = typeof it.onClick === 'function' && !it.soon && !isDownload;
             const rowClass = `settings-row${isDownload ? ' settings-row--link' : ''}`;

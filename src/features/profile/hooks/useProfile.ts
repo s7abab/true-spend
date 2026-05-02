@@ -6,13 +6,20 @@ import { useAuth } from '@/features/auth/components/AuthContext';
 import { resolveAvatarUrl } from '@/utils/avatar';
 import type { ProfileRow } from '@/features/profile/types';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { inferCurrencyFromLocation } from '@/utils/inferCurrency';
 
 async function fetchOrCreateProfile(userId: string, user: User): Promise<ProfileRow> {
   const first = await profilesApi.fetchProfile(userId);
   if (first.error) throw first.error;
   let data = first.data as ProfileRow | null;
   if (!data) {
-    const row = profilesApi.profileRowFromUser(user);
+    let initialCurrency: string | null = null;
+    try {
+      initialCurrency = await inferCurrencyFromLocation();
+    } catch {
+      /* keep null → INR in profileRowFromUser */
+    }
+    const row = profilesApi.profileRowFromUser(user, initialCurrency);
     if (row) {
       const ins = await profilesApi.insertProfile(row);
       if (ins.error) console.warn('profile bootstrap insert', ins.error);
@@ -52,6 +59,40 @@ export function useProfile() {
       cancelled = true;
     };
   }, [user, profile?.id, profile?.avatar_url, qc]);
+
+  /** One-time: align DB default INR with IP/locale when the user is clearly elsewhere. */
+  useEffect(() => {
+    if (!user?.id || !profile?.id) return;
+    const key = `truspend_geo_currency_v1:${user.id}`;
+    try {
+      if (localStorage.getItem(key)) return;
+    } catch {
+      /* ignore */
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const inferred = await inferCurrencyFromLocation();
+      if (cancelled || !inferred) return;
+
+      const current = (profile.currency || 'INR').toUpperCase();
+      if (current === 'INR' && inferred !== 'INR') {
+        const out = await profilesApi.updateProfile(user.id, { currency: inferred });
+        if (cancelled || out.error) return;
+        if (out.data) qc.setQueryData(queryKeys.profile(user.id), out.data as ProfileRow);
+      }
+
+      try {
+        localStorage.setItem(key, '1');
+      } catch {
+        /* ignore */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, profile?.id, profile?.currency, qc]);
 
   const updateMutation = useMutation({
     mutationFn: async ({ uid, patch }: { uid: string; patch: Partial<ProfileRow> }) => {

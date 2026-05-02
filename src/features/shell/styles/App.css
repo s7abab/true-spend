@@ -907,6 +907,60 @@ button.txn-row.txn-row-btn:active {
 }
 .settings-row:last-child { border-bottom: none; }
 
+.settings-row__label {
+  font-size: 15px;
+  font-weight: 500;
+  color: #0F0F12;
+  flex-shrink: 0;
+}
+
+.settings-row--currency {
+  gap: 14px;
+}
+
+/*
+ * Native <select>: do not use text-align:right — many browsers apply it to the
+ * system dropdown too, which squishes options against the edge. Widen the control
+ * so the OS picker is readable (Chrome ties menu width to the field).
+ */
+.settings-currency-select {
+  flex: 0 1 auto;
+  box-sizing: border-box;
+  min-width: 7.75rem;
+  max-width: 45%;
+  margin: 0;
+  padding: 8px 30px 8px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  color: #3D3D45;
+  text-align: left;
+  background-color: #FAFAFB;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.25L6 7.75l3.5-3.5' stroke='%236B6B80' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+  border: 1px solid #E8E8ED;
+  border-radius: 10px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  text-overflow: ellipsis;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-currency-select:focus {
+  outline: none;
+  border-color: #C8C8D4;
+  box-shadow: 0 0 0 3px rgba(15, 15, 18, 0.06);
+}
+
+.settings-currency-select:active {
+  background-color: #F4F4F6;
+}
+
 a.settings-row.settings-row--link {
   text-decoration: none;
   color: inherit;
