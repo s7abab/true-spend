@@ -212,8 +212,8 @@
 }
 
 .txn-chat-draft--collapsible .txn-chat-draft-input {
-  min-height: 40px;
-  padding: 7px 9px;
+  min-height: 36px;
+  padding: 5px 8px;
 }
 
 .txn-chat-draft-fields {
@@ -245,12 +245,13 @@
 .txn-chat-draft-input {
   width: 100%;
   box-sizing: border-box;
-  min-height: 40px;
-  padding: 8px 10px;
+  min-height: 36px;
+  padding: 6px 9px;
   border-radius: 10px;
   border: 1px solid #E8E8EF;
-  /* 16px avoids iOS zoom-on-focus and stabilizes mobile layout */
-  font-size: 16px;
+  /* 13px on fine pointers; 16px on coarse (touch) to limit iOS input zoom */
+  font-size: 13px;
+  font-weight: 400;
   font-family: inherit;
   color: #0F0F12;
   background: #FAFAFB;
@@ -283,6 +284,67 @@
 
 .txn-chat-draft-select {
   cursor: pointer;
+}
+
+/* Same pattern as AddTransactionScreen: visible label + overlay native <input type="date"> */
+.txn-chat-draft-date-native {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 9px;
+  border-radius: 10px;
+  border: 1px solid #E8E8EF;
+  background: #FAFAFB;
+  font-size: 13px;
+  font-weight: 400;
+  font-family: inherit;
+  color: #0F0F12;
+  cursor: pointer;
+}
+
+.txn-chat-draft-date-native:has(.txn-chat-draft-date-native-input:disabled) {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.txn-chat-draft-date-native-label {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.txn-chat-draft-date-native-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.txn-chat-draft-date-native-input:disabled {
+  cursor: default;
+}
+
+.txn-chat-draft-date-native-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  color: transparent;
+  cursor: pointer;
+  opacity: 0.01;
 }
 
 .txn-chat-footer {
@@ -380,6 +442,14 @@
   text-align: center;
   padding: 8px 12px 0;
   line-height: 1.4;
+}
+
+@media (pointer: coarse) {
+  .txn-chat-draft-input,
+  .txn-chat-draft-date-native,
+  .txn-chat-draft-date-native-input {
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 520px) {

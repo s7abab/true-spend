@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { IClose } from '@/shared/components/Icons';
+import { ICalendar, IClose } from '@/shared/components/Icons';
+import { parseDateInput, toDateInputValue } from '@/features/history/utils/dateRange';
+import { formatDateLabel } from '@/utils/dateLabel';
 import { DataErrorBanner } from '@/shared/components/DataErrorBanner';
 import type { CategoryRow } from '@/features/categories/types';
 import {
@@ -23,22 +25,23 @@ import '@/features/transactions/styles/TxnChatScreen.css';
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
-function txnChatRowHasSaveableAmount(t: TxnChatDraftTransaction): boolean {
-  const raw = t.amount;
-  if (raw == null) return false;
-  if (typeof raw === 'number') return Number.isFinite(raw) && raw > 0;
-  if (typeof raw === 'string' && String(raw).trim()) {
-    const n = Number(raw);
-    return Number.isFinite(n) && n > 0;
-  }
-  return false;
+function localCalendarDateFromYmd(ymd: string): Date {
+  const p = parseDateInput(ymd);
+  if (p) return p;
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
-/** If any row has an amount, drop rows without — avoids half-empty forms; aligns with prompt. */
+function localTodayDate(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** Keep every row the model returns so users can fill missing amounts on the same screen as priced lines. */
 function filterTxnChatRowsForDraftUi(txs: TxnChatDraftTransaction[]): TxnChatDraftTransaction[] {
-  if (txs.length === 0) return txs;
-  if (!txs.some(txnChatRowHasSaveableAmount)) return txs;
-  return txs.filter(txnChatRowHasSaveableAmount);
+  return txs;
 }
 
 export type ChatDraftRow = {
@@ -356,8 +359,8 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
       const result = await txnAi.provider.chatTurn({
         priorTranscript: prior,
         userMessage: text,
-        expenseLabels: props.catsExpense.map((c) => c.label),
-        incomeLabels: props.catsIncome.map((c) => c.label),
+        expenseCategories: props.catsExpense.map((c) => ({ label: c.label })),
+        incomeCategories: props.catsIncome.map((c) => ({ label: c.label })),
         currency: props.currency,
       });
       const txsForDrafts = filterTxnChatRowsForDraftUi(result.transactions);
@@ -486,8 +489,9 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
       <div ref={scrollRef} className="txn-chat-scroll">
         {messages.length === 0 && !sending ? (
           <div className="txn-chat-hint" style={{ paddingTop: 24 }}>
-            Include amounts in {cur} so rows can save in one step — e.g. “Coffee 120 today”, “80 bus + 200 groceries
-            yesterday”. If you skip prices, the assistant will ask in chat first (no empty forms).
+            Include amounts in {cur} when you can — e.g. “Coffee 120 today”, “80 bus + 200 groceries yesterday”. If you
+            list several things and only some have prices, you will get a card per line and can type the missing amounts
+            before saving.
           </div>
         ) : null}
         {messages.map((m) => (
@@ -559,15 +563,25 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
                             </label>
                             <label className="txn-chat-draft-field">
                               <span className="txn-chat-draft-label">Date</span>
-                              <input
-                                className="txn-chat-draft-input"
-                                type="date"
-                                value={display.dateYmd}
-                                onChange={(e) => {
-                                  const y = e.target.value;
-                                  if (/^\d{4}-\d{2}-\d{2}$/.test(y)) updateDraftEdit(key, { dateYmd: y });
-                                }}
-                              />
+                              <span className="txn-chat-draft-date-native">
+                                <ICalendar size={12} stroke={2} aria-hidden />
+                                <span className="txn-chat-draft-date-native-label">
+                                  {formatDateLabel(localCalendarDateFromYmd(display.dateYmd))}
+                                </span>
+                                <input
+                                  type="date"
+                                  className="txn-chat-draft-date-native-input"
+                                  aria-label="Transaction date"
+                                  value={display.dateYmd}
+                                  max={toDateInputValue(localTodayDate())}
+                                  min="1970-01-01"
+                                  disabled={Boolean(savingId) || sending}
+                                  onChange={(e) => {
+                                    const y = e.target.value;
+                                    if (/^\d{4}-\d{2}-\d{2}$/.test(y)) updateDraftEdit(key, { dateYmd: y });
+                                  }}
+                                />
+                              </span>
                             </label>
                             <label className="txn-chat-draft-field">
                               <span className="txn-chat-draft-label">Type</span>

@@ -15,12 +15,19 @@ export type TxnChatTurnResult = {
   transactions: TxnChatDraftTransaction[];
 };
 
+/** One row from the signed-in user's category list (expense or income). */
+export type TxnChatCategoryForPrompt = {
+  label: string;
+};
+
 /** Provider-agnostic input for one user turn (after building transcript in the UI). */
 export type TxnChatTurnRequest = {
   priorTranscript: string;
   userMessage: string;
-  expenseLabels: string[];
-  incomeLabels: string[];
+  /** User's expense categories for this ledger — only these labels are valid for expense rows. */
+  expenseCategories: TxnChatCategoryForPrompt[];
+  /** User's income categories — only these labels are valid for income rows. */
+  incomeCategories: TxnChatCategoryForPrompt[];
   currency: string;
   /** Local calendar YYYY-MM-DD */
   todayYmd?: string;

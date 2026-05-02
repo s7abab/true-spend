@@ -3,7 +3,12 @@
  *
  * Add a new backend: implement {@link TxnChatProvider}, register it in `resolve-env.ts`.
  */
-export type { TxnChatDraftTransaction, TxnChatTurnRequest, TxnChatTurnResult } from '@/features/transactions/lib/txn-chat/types';
+export type {
+  TxnChatCategoryForPrompt,
+  TxnChatDraftTransaction,
+  TxnChatTurnRequest,
+  TxnChatTurnResult,
+} from '@/features/transactions/lib/txn-chat/types';
 export type { TxnChatProvider, TxnChatProviderId } from '@/features/transactions/lib/txn-chat/providers/types';
 export { formatTxnChatTranscript } from '@/features/transactions/lib/txn-chat/transcript';
 export { resolveTxnChatFromEnv } from '@/features/transactions/lib/txn-chat/resolve-env';
