@@ -907,6 +907,11 @@ button.txn-row.txn-row-btn:active {
 }
 .settings-row:last-child { border-bottom: none; }
 
+.settings-row--export-sub {
+  padding-left: 28px;
+  background: #FAFAFB;
+}
+
 .settings-row__label {
   font-size: 15px;
   font-weight: 500;

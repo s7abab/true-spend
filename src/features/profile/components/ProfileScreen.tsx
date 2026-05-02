@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import { resolveAvatarUrl } from '@/utils/avatar';
 import type { ProfileRow } from '@/features/profile/types';
@@ -13,21 +13,6 @@ function initialsOf(name = '', email = ''): string {
   const parts = src.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
   return src.slice(0, 2).toUpperCase();
-}
-
-function downloadJson(filename: string, data: unknown): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.rel = 'noopener';
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  // Revoke after the download has bound to the blob URL; immediate revoke can cancel the save dialog.
-  window.setTimeout(() => URL.revokeObjectURL(url), 15_000);
 }
 
 function AvatarCircle({ url, initials, size }: { url: string | null; initials: string; size: number }) {
@@ -86,6 +71,10 @@ type SettingsItem = {
   onClick?: () => void | Promise<void>;
   /** Inline `<select>` for currency (avoids whole-row tap). */
   currencyPicker?: boolean;
+  /** Row is part of export menu (outside-click / layout). */
+  exportMenuRoot?: boolean;
+  /** Indented option under Export data */
+  exportSub?: boolean;
 };
 
 type ProfileScreenProps = {
@@ -107,6 +96,7 @@ export function ProfileScreen({
 }: ProfileScreenProps) {
   const { signOut } = useAuth();
   const [exporting, setExporting] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportBusy = useRef(false);
 
   const fullName =
@@ -135,25 +125,43 @@ export function ProfileScreen({
     [updateProfile],
   );
 
-  const exportData = useCallback(async () => {
-    if (!onExportTransactions || exportBusy.current) return;
-    exportBusy.current = true;
-    setExporting(true);
-    try {
-      const transactions = await onExportTransactions();
-      downloadJson(`truspend-export-${new Date().toISOString().slice(0, 10)}.json`, {
-        exportedAt: new Date().toISOString(),
-        profile,
-        categories: lists,
-        transactions,
-      });
-    } catch (e) {
-      console.error('export failed', e);
-    } finally {
-      exportBusy.current = false;
-      setExporting(false);
-    }
-  }, [profile, lists, onExportTransactions]);
+  const exportInFormat = useCallback(
+    async (format: 'pdf' | 'excel') => {
+      if (!onExportTransactions || exportBusy.current) return;
+      exportBusy.current = true;
+      setExporting(true);
+      setExportMenuOpen(false);
+      try {
+        const transactions = await onExportTransactions();
+        const bundle = {
+          exportedAt: new Date().toISOString(),
+          profile,
+          categories: lists,
+          transactions,
+        };
+        const mod = await import('@/features/profile/lib/exportDataFormats');
+        if (format === 'pdf') mod.downloadExportPdf(bundle);
+        else mod.downloadExportExcel(bundle);
+      } catch (e) {
+        console.error('export failed', e);
+      } finally {
+        exportBusy.current = false;
+        setExporting(false);
+      }
+    },
+    [profile, lists, onExportTransactions],
+  );
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const el = e.target;
+      if (el instanceof Element && el.closest('[data-export-menu-root]')) return;
+      setExportMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [exportMenuOpen]);
 
   const groups = useMemo(
     () =>
@@ -186,12 +194,38 @@ export function ProfileScreen({
         {
           title: 'Data',
           items: [
-            { label: exporting ? 'Exporting…' : 'Export data', onClick: () => void exportData() },
+            {
+              label: exporting ? 'Exporting…' : 'Export data',
+              sub: exportMenuOpen ? 'Choose format' : 'PDF or Excel',
+              exportMenuRoot: true,
+              onClick: () => {
+                if (exporting) return;
+                setExportMenuOpen((o) => !o);
+              },
+            },
+            ...(exportMenuOpen && !exporting
+              ? ([
+                  {
+                    label: 'PDF',
+                    sub: 'Summary + transactions',
+                    exportMenuRoot: true,
+                    exportSub: true,
+                    onClick: () => void exportInFormat('pdf'),
+                  },
+                  {
+                    label: 'Excel',
+                    sub: '.xlsx',
+                    exportMenuRoot: true,
+                    exportSub: true,
+                    onClick: () => void exportInFormat('excel'),
+                  },
+                ] satisfies SettingsItem[])
+              : []),
             { label: 'Sign out', danger: true, onClick: () => void signOut() },
           ] satisfies SettingsItem[],
         },
       ] as { title: string; items: SettingsItem[] }[],
-    [currency, exportData, exporting, signOut, onGoToCategories],
+    [exportInFormat, exportMenuOpen, exporting, signOut, onGoToCategories],
   );
 
   return (
@@ -253,6 +287,9 @@ export function ProfileScreen({
             }
 
             const interactive = typeof it.onClick === 'function' && !it.soon;
+            const rowClass = ['settings-row', it.exportSub ? 'settings-row--export-sub' : '']
+              .filter(Boolean)
+              .join(' ');
             const inner = (
               <>
                 <span
@@ -275,7 +312,8 @@ export function ProfileScreen({
             return (
               <div
                 key={i}
-                className="settings-row"
+                className={rowClass}
+                {...(it.exportMenuRoot ? { 'data-export-menu-root': '' } : {})}
                 onClick={interactive ? () => void it.onClick?.() : undefined}
                 onKeyDown={
                   interactive
@@ -290,6 +328,7 @@ export function ProfileScreen({
                 role={interactive ? 'button' : undefined}
                 tabIndex={interactive ? 0 : undefined}
                 style={interactive ? { cursor: 'pointer' } : undefined}
+                aria-expanded={it.label === 'Export data' || it.label === 'Exporting…' ? exportMenuOpen : undefined}
               >
                 {inner}
               </div>
