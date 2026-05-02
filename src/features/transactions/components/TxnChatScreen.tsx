@@ -500,7 +500,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, ease }}
-            style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, width: '100%' }}
           >
             <div className={`txn-chat-bubble txn-chat-bubble--${m.role === 'user' ? 'user' : 'assistant'}`}>{m.text}</div>
             {m.role === 'assistant' && m.drafts && m.drafts.length > 0 ? (
@@ -602,7 +602,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
                                 <option value="income">Income</option>
                               </select>
                             </label>
-                            <label className="txn-chat-draft-field txn-chat-draft-field--wide">
+                            <label className="txn-chat-draft-field">
                               <span className="txn-chat-draft-label">Category</span>
                               <select
                                 className="txn-chat-draft-input txn-chat-draft-select"
