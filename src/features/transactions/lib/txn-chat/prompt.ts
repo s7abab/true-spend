@@ -15,7 +15,7 @@ export const TXN_CHAT_RESPONSE_JSON_SCHEMA = {
     reply: {
       type: 'string',
       description:
-        'Short friendly message. If amount is missing, ask one clear question (e.g. how much?). Otherwise summarize.',
+        'Short friendly message. If amounts are missing, list what you understood and ask for each amount; when transactions is empty, do not imply forms were created.',
     },
     transactions: {
       type: 'array',
@@ -55,14 +55,16 @@ Valid income category_label values (exact strings when possible):
 ${inc}
 
 Rules:
-- Extract every separate transaction the user describes in one reply.
+- Extract every separate transaction the user describes in one reply **only when each line has a clear money amount** in ${opts.currency} (e.g. "120", "₹80", "50 rs"). Counts or quantities alone ("5 apples", "two coffees") are **not** money — do not guess a price.
+- **If the user lists spending/income but no line has an explicit money amount**, return \`transactions: []\`. In \`reply\`, briefly mirror what you understood (titles/categories if clear) and ask for **each** missing amount in one short message. Do **not** emit transaction rows with missing amounts in that case — the app will show cards only when amounts exist so the user is not stuck with empty forms.
+- If **some** lines have amounts and **some** do not, include only rows that have a positive \`amount\`; in \`reply\`, note any items still missing amounts and ask for those.
 - kind "expense" for spending, purchases, bills, fees. kind "income" for salary, freelance pay, refunds received, interest, gifts received, etc.
-- amount: include a positive number only when the user gave a clear amount in money (not counts like "5 apples" unless they also gave a price). If they did not give a money amount, omit amount or set null and ask in reply what the amount was.
+- amount: positive number only when clearly stated as money for that line. Never invent or estimate amounts.
 - date: YYYY-MM-DD when you can infer it ("today", "yesterday", weekdays → relative to ${opts.todayYmd}). If not mentioned, omit date or null (the app will default to today).
 - category_label: pick from the list for that kind when possible; omit or null if unsure (the app will default to a category they can change).
 - title is a short human-readable label (a few words).
 - If the message is not about money or nothing can be parsed, return transactions: [] and reply explaining what you need.
-- Follow-up messages: merge prior context; when the user only sends a number, treat it as the missing amount for the last open item when obvious.`;
+- Follow-up messages: merge prior context; when the user sends amounts (one number, or several like "80 and 500" / "apples 50 movie 800"), emit the matching \`transactions\` with titles and amounts filled.`;
 }
 
 /** Appended for providers that only support generic json_object (no JSON schema enforcement). */

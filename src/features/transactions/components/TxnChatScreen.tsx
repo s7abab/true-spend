@@ -23,6 +23,24 @@ import '@/features/transactions/styles/TxnChatScreen.css';
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
+function txnChatRowHasSaveableAmount(t: TxnChatDraftTransaction): boolean {
+  const raw = t.amount;
+  if (raw == null) return false;
+  if (typeof raw === 'number') return Number.isFinite(raw) && raw > 0;
+  if (typeof raw === 'string' && String(raw).trim()) {
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0;
+  }
+  return false;
+}
+
+/** If any row has an amount, drop rows without — avoids half-empty forms; aligns with prompt. */
+function filterTxnChatRowsForDraftUi(txs: TxnChatDraftTransaction[]): TxnChatDraftTransaction[] {
+  if (txs.length === 0) return txs;
+  if (!txs.some(txnChatRowHasSaveableAmount)) return txs;
+  return txs.filter(txnChatRowHasSaveableAmount);
+}
+
 export type ChatDraftRow = {
   kind: 'expense' | 'income';
   title: string;
@@ -342,10 +360,14 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
         incomeLabels: props.catsIncome.map((c) => c.label),
         currency: props.currency,
       });
-      const drafts =
-        result.transactions.length > 0
-          ? buildChatDrafts(result.transactions, props.catsExpense, props.catsIncome)
+      const txsForDrafts = filterTxnChatRowsForDraftUi(result.transactions);
+      const built =
+        txsForDrafts.length > 0
+          ? buildChatDrafts(txsForDrafts, props.catsExpense, props.catsIncome)
           : undefined;
+      // Avoid surfacing full draft forms when nothing is saveable yet (model should ask in reply instead).
+      const drafts =
+        built && built.some((d) => d.amount != null && d.amount > 0) ? built : undefined;
       setMessages((prev) => [
         ...prev,
         { id: `a-${Date.now()}`, role: 'assistant', text: result.reply, drafts },
@@ -464,8 +486,8 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
       <div ref={scrollRef} className="txn-chat-scroll">
         {messages.length === 0 && !sending ? (
           <div className="txn-chat-hint" style={{ paddingTop: 24 }}>
-            Examples: “eat 5 apples” (I’ll ask how much it cost), “Coffee 120 today”, “Salary 45000 on the 1st”, “Spent 80 on bus
-            and 200 on groceries yesterday”
+            Include amounts in {cur} so rows can save in one step — e.g. “Coffee 120 today”, “80 bus + 200 groceries
+            yesterday”. If you skip prices, the assistant will ask in chat first (no empty forms).
           </div>
         ) : null}
         {messages.map((m) => (
@@ -515,12 +537,13 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
                             <label className="txn-chat-draft-field">
                               <span className="txn-chat-draft-label">Amount ({cur})</span>
                               <input
-                                className="txn-chat-draft-input"
+                                className={`txn-chat-draft-input${display.amount == null || !(display.amount > 0) ? ' txn-chat-draft-input--needs-amount' : ''}`}
                                 type="number"
                                 inputMode="decimal"
                                 min={0}
                                 step="0.01"
-                                placeholder="Required"
+                                placeholder={`Amount (${cur})`}
+                                aria-invalid={display.amount == null || !(display.amount > 0)}
                                 value={display.amount == null ? '' : String(display.amount)}
                                 onChange={(e) => {
                                   const v = e.target.value;
@@ -653,6 +676,11 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
                               ? 'Save to ledger'
                               : `Save ${m.drafts!.length} to ledger`}
                         </button>
+                        {!allReady ? (
+                          <p className="txn-chat-save-hint" role="status">
+                            Enter a positive amount for each line to enable save.
+                          </p>
+                        ) : null}
                       </div>
                     </>
                   );

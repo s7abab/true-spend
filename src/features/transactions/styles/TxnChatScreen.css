@@ -262,6 +262,25 @@
   background: #fff;
 }
 
+.txn-chat-draft-input--needs-amount {
+  border-color: #d4a574;
+  background: #fffaf5;
+}
+
+.txn-chat-draft-input--needs-amount:focus {
+  border-color: #c4884a;
+  background: #fff;
+}
+
+.txn-chat-save-hint {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #6b6b80;
+  min-width: 0;
+}
+
 .txn-chat-draft-select {
   cursor: pointer;
 }
