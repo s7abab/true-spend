@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useAuth } from '@/features/auth/components/AuthContext';
+import { IDownload } from '@/shared/components/Icons';
 import { resolveAvatarUrl } from '@/utils/avatar';
 import type { ProfileRow } from '@/features/profile/types';
 import type { User } from '@supabase/supabase-js';
@@ -71,10 +72,8 @@ type SettingsItem = {
   onClick?: () => void | Promise<void>;
   /** Inline `<select>` for currency (avoids whole-row tap). */
   currencyPicker?: boolean;
-  /** Row is part of export menu (outside-click / layout). */
-  exportMenuRoot?: boolean;
-  /** Indented option under Export data */
-  exportSub?: boolean;
+  /** Inline `<select>` for export format (Excel / PDF). */
+  exportFormatPicker?: boolean;
 };
 
 type ProfileScreenProps = {
@@ -96,7 +95,7 @@ export function ProfileScreen({
 }: ProfileScreenProps) {
   const { signOut } = useAuth();
   const [exporting, setExporting] = useState(false);
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exportFormatValue, setExportFormatValue] = useState<'excel' | 'pdf'>('excel');
   const exportBusy = useRef(false);
 
   const fullName =
@@ -130,7 +129,6 @@ export function ProfileScreen({
       if (!onExportTransactions || exportBusy.current) return;
       exportBusy.current = true;
       setExporting(true);
-      setExportMenuOpen(false);
       try {
         const transactions = await onExportTransactions();
         const bundle = {
@@ -152,17 +150,6 @@ export function ProfileScreen({
     [profile, lists, onExportTransactions],
   );
 
-  useEffect(() => {
-    if (!exportMenuOpen) return;
-    const onDown = (e: MouseEvent) => {
-      const el = e.target;
-      if (el instanceof Element && el.closest('[data-export-menu-root]')) return;
-      setExportMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [exportMenuOpen]);
-
   const groups = useMemo(
     () =>
       [
@@ -171,7 +158,7 @@ export function ProfileScreen({
           items: [
             {
               label: 'Categories',
-              sub: 'Edit expense, income & transfer categories',
+              sub: 'Edit categories',
               onClick: onGoToCategories ? () => onGoToCategories() : undefined,
             },
           ] satisfies SettingsItem[],
@@ -194,38 +181,12 @@ export function ProfileScreen({
         {
           title: 'Data',
           items: [
-            {
-              label: exporting ? 'Exporting…' : 'Export data',
-              sub: exportMenuOpen ? 'Choose format' : 'PDF or Excel',
-              exportMenuRoot: true,
-              onClick: () => {
-                if (exporting) return;
-                setExportMenuOpen((o) => !o);
-              },
-            },
-            ...(exportMenuOpen && !exporting
-              ? ([
-                  {
-                    label: 'PDF',
-                    sub: 'Summary + transactions',
-                    exportMenuRoot: true,
-                    exportSub: true,
-                    onClick: () => void exportInFormat('pdf'),
-                  },
-                  {
-                    label: 'Excel',
-                    sub: '.xlsx',
-                    exportMenuRoot: true,
-                    exportSub: true,
-                    onClick: () => void exportInFormat('excel'),
-                  },
-                ] satisfies SettingsItem[])
-              : []),
+            { label: 'Export', exportFormatPicker: true },
             { label: 'Sign out', danger: true, onClick: () => void signOut() },
           ] satisfies SettingsItem[],
         },
       ] as { title: string; items: SettingsItem[] }[],
-    [exportInFormat, exportMenuOpen, exporting, signOut, onGoToCategories],
+    [signOut, onGoToCategories],
   );
 
   return (
@@ -286,10 +247,38 @@ export function ProfileScreen({
               );
             }
 
+            if (it.exportFormatPicker) {
+              return (
+                <div key={i} className="settings-row settings-row--currency settings-row--export-row">
+                  <span className="settings-row__label">{it.label}</span>
+                  <div className="settings-export-right">
+                    <select
+                      className="settings-currency-select settings-currency-select--export-compact"
+                      aria-label="Export format"
+                      value={exportFormatValue}
+                      disabled={exporting}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setExportFormatValue(e.target.value as 'excel' | 'pdf')}
+                    >
+                      <option value="excel">Excel</option>
+                      <option value="pdf">PDF</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="settings-export-icon-btn"
+                      disabled={exporting}
+                      aria-label={exporting ? 'Exporting…' : 'Download'}
+                      aria-busy={exporting}
+                      onClick={() => void exportInFormat(exportFormatValue)}
+                    >
+                      <IDownload size={18} stroke={2} />
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
             const interactive = typeof it.onClick === 'function' && !it.soon;
-            const rowClass = ['settings-row', it.exportSub ? 'settings-row--export-sub' : '']
-              .filter(Boolean)
-              .join(' ');
             const inner = (
               <>
                 <span
@@ -312,8 +301,7 @@ export function ProfileScreen({
             return (
               <div
                 key={i}
-                className={rowClass}
-                {...(it.exportMenuRoot ? { 'data-export-menu-root': '' } : {})}
+                className="settings-row"
                 onClick={interactive ? () => void it.onClick?.() : undefined}
                 onKeyDown={
                   interactive
@@ -328,7 +316,6 @@ export function ProfileScreen({
                 role={interactive ? 'button' : undefined}
                 tabIndex={interactive ? 0 : undefined}
                 style={interactive ? { cursor: 'pointer' } : undefined}
-                aria-expanded={it.label === 'Export data' || it.label === 'Exporting…' ? exportMenuOpen : undefined}
               >
                 {inner}
               </div>

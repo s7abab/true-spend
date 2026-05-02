@@ -905,11 +905,55 @@ button.txn-row.txn-row-btn:active {
   padding: 14px 18px;
   border-bottom: 1px solid #F5F5F8;
 }
-.settings-row:last-child { border-bottom: none; }
+.settings-group > .settings-row:last-child {
+  border-bottom: none;
+}
 
-.settings-row--export-sub {
-  padding-left: 28px;
-  background: #FAFAFB;
+.settings-row--export-row {
+  gap: 12px;
+}
+
+.settings-export-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.settings-currency-select.settings-currency-select--export-compact {
+  min-width: 5.25rem;
+  max-width: 38%;
+  padding: 6px 26px 6px 10px;
+  font-size: 12px;
+  background-position: right 8px center;
+  background-size: 11px;
+}
+
+.settings-export-icon-btn {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  color: #5b7fff;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-export-icon-btn:hover:not(:disabled) {
+  color: #3d5fd9;
+}
+
+.settings-export-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .settings-row__label {
