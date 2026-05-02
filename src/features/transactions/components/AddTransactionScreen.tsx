@@ -1,5 +1,4 @@
-import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { IBackspace, ICheck, IClose, ICalendar, IPlus, ITrash, ICON_MAP } from '@/shared/components/Icons';
 import { parseDateInput, toDateInputValue } from '@/features/history/utils/dateRange';
@@ -9,6 +8,13 @@ import { currencyPrefix } from '@/utils/money';
 import type { CategoryRow } from '@/features/categories/types';
 import type { TransactionKind } from '@/types/ledger';
 import type { MappedTxn } from '@/utils/txnMap';
+import {
+  readPersistedAddTxnKind,
+  writePersistedAddTxnKind,
+  readPersistedAddEntryTab,
+  writePersistedAddEntryTab,
+} from '@/features/transactions/lib/txnUiLocalStorage';
+import { TxnChatScreen, type TxnChatShellProps } from '@/features/transactions/components/TxnChatScreen';
 
 function getToday(): Date {
   const d = new Date();
@@ -33,6 +39,20 @@ function initialKindAndCat(expense: CategoryRow[], income: CategoryRow[]) {
   if (expense.length > 0) return { kind: 'expense' as TransactionKind, catId: expense[0]!.id };
   if (income.length > 0) return { kind: 'income' as TransactionKind, catId: income[0]!.id };
   return { kind: 'expense' as TransactionKind, catId: null as string | null };
+}
+
+function kindAndCatFromStorage(
+  expense: CategoryRow[],
+  income: CategoryRow[],
+): { kind: TransactionKind; catId: string | null } | null {
+  const stored = readPersistedAddTxnKind();
+  if (stored === 'income' && income.length > 0) {
+    return { kind: 'income', catId: income[0]!.id };
+  }
+  if (stored === 'expense' && expense.length > 0) {
+    return { kind: 'expense', catId: expense[0]!.id };
+  }
+  return null;
 }
 
 function txnAmountKeypad(n: number): string {
@@ -63,6 +83,8 @@ type AddTransactionScreenProps = {
   currency?: string;
   saving?: boolean;
   asPage?: boolean;
+  /** When set on a new add (`asPage` + not edit), shows Manual / AI chat tabs. */
+  aiChat?: TxnChatShellProps | null;
 };
 
 export function AddTransactionScreen({
@@ -77,18 +99,33 @@ export function AddTransactionScreen({
   currency = 'INR',
   saving = false,
   asPage = false,
+  aiChat = null,
 }: AddTransactionScreenProps) {
-  const navigate = useNavigate();
   const isEdit = Boolean(initialTxn);
-  const [kind, setKind] = useState<TransactionKind>(() =>
-    initialTxn ? initialTxn.kind : initialKindAndCat(categoriesExpense, categoriesIncome).kind,
-  );
+  const showAiEntry = Boolean(asPage && !isEdit && aiChat);
+  const [entryTab, setEntryTab] = useState<'manual' | 'ai'>(() => {
+    if (initialTxn) return 'manual';
+    return readPersistedAddEntryTab() ?? 'manual';
+  });
+  const [aiBusy, setAiBusy] = useState(false);
+  const onAiActivity = useCallback((v: boolean) => {
+    setAiBusy(v);
+  }, []);
+  const [kind, setKind] = useState<TransactionKind>(() => {
+    if (initialTxn) return initialTxn.kind;
+    const fromLs = kindAndCatFromStorage(categoriesExpense, categoriesIncome);
+    if (fromLs) return fromLs.kind;
+    return initialKindAndCat(categoriesExpense, categoriesIncome).kind;
+  });
   const [amount, setAmount] = useState(() =>
     initialTxn ? txnAmountKeypad(initialTxn.amount) : '0',
   );
-  const [catId, setCatId] = useState<string | null>(() =>
-    initialTxn ? initialTxn.cat : initialKindAndCat(categoriesExpense, categoriesIncome).catId,
-  );
+  const [catId, setCatId] = useState<string | null>(() => {
+    if (initialTxn) return initialTxn.cat;
+    const fromLs = kindAndCatFromStorage(categoriesExpense, categoriesIncome);
+    if (fromLs) return fromLs.catId;
+    return initialKindAndCat(categoriesExpense, categoriesIncome).catId;
+  });
   const [note, setNote] = useState(() =>
     initialTxn ? (initialTxn.note || initialTxn.title || '') : '',
   );
@@ -138,6 +175,7 @@ export function AddTransactionScreen({
     if (!list.length) return;
     setKind(k);
     setCatId(list[0]?.id ?? null);
+    writePersistedAddTxnKind(k);
   };
 
   const press = (k: string) => {
@@ -179,67 +217,98 @@ export function AddTransactionScreen({
   const sheetHandle = !asPage ? <div className="sheet-handle" /> : null;
   const dateMaxStr = toDateInputValue(getToday());
 
-  const formScroll = (
-    <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 0' }}>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onClose}
-          aria-label="Close"
-          className="sheet-close-btn"
-        >
-          <IClose size={16} />
-        </button>
-        {asPage && !isEdit ? (
+  const expenseIncomeSeg = (
+    <div className="seg" style={{ flex: 1, minWidth: 0 }}>
+      <div
+        className={`seg-thumb${isExp ? ' seg-thumb--rose' : ' seg-thumb--emerald'}`}
+        style={{ left: isExp ? 3 : '50%', width: 'calc(50% - 3px)' }}
+      />
+      {(['expense', 'income'] as const).map((t) => {
+        const disabled = (t === 'expense' && !hasExp) || (t === 'income' && !hasInc);
+        return (
           <button
+            key={t}
             type="button"
-            disabled={busy}
-            onClick={() => navigate('/chat')}
+            disabled={disabled || busy}
+            className={`seg-btn${kind === t ? ' active' : ''}`}
+            onClick={() => handleKind(t)}
             style={{
-              flexShrink: 0,
-              padding: '7px 11px',
-              borderRadius: 999,
-              border: '1px solid #E8E8EF',
-              background: '#FAFAFB',
-              color: '#0F0F12',
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: busy ? 'default' : 'pointer',
-              fontFamily: 'inherit',
+              color: disabled ? '#D8D8E0' : kind === t ? '#0F0F12' : '#ACACB8',
+              textTransform: 'capitalize',
+              opacity: disabled ? 0.55 : 1,
+              cursor: disabled ? 'not-allowed' : 'pointer',
             }}
           >
-            AI chat
+            {t}
           </button>
-        ) : null}
-        <div className="seg" style={{ flex: 1 }}>
-          <div
-            className={`seg-thumb${isExp ? ' seg-thumb--rose' : ' seg-thumb--emerald'}`}
-            style={{ left: isExp ? 3 : '50%', width: 'calc(50% - 3px)' }}
-          />
-          {(['expense', 'income'] as const).map((t) => {
-            const disabled = (t === 'expense' && !hasExp) || (t === 'income' && !hasInc);
-            return (
+        );
+      })}
+    </div>
+  );
+
+  const formScroll = (
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '14px 16px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            type="button"
+            disabled={busy || (showAiEntry && entryTab === 'ai' && aiBusy)}
+            onClick={onClose}
+            aria-label="Close"
+            className="sheet-close-btn"
+          >
+            <IClose size={16} />
+          </button>
+          {showAiEntry ? (
+            <div className="seg" style={{ flex: 1, minWidth: 0 }}>
+              <div
+                className="seg-thumb seg-thumb--slate"
+                style={{ left: entryTab === 'manual' ? 3 : '50%', width: 'calc(50% - 3px)' }}
+              />
               <button
-                key={t}
                 type="button"
-                disabled={disabled || busy}
-                className={`seg-btn${kind === t ? ' active' : ''}`}
-                onClick={() => handleKind(t)}
+                className={`seg-btn${entryTab === 'manual' ? ' active' : ''}`}
+                disabled={busy}
+                onClick={() => {
+                  setEntryTab('manual');
+                  writePersistedAddEntryTab('manual');
+                }}
                 style={{
-                  color: disabled ? '#D8D8E0' : kind === t ? '#0F0F12' : '#ACACB8',
-                  textTransform: 'capitalize',
-                  opacity: disabled ? 0.55 : 1,
-                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  color: entryTab === 'manual' ? '#0F0F12' : '#ACACB8',
+                  fontSize: 13,
+                  fontWeight: 600,
                 }}
               >
-                {t}
+                Manual
               </button>
-            );
-          })}
+              <button
+                type="button"
+                className={`seg-btn${entryTab === 'ai' ? ' active' : ''}`}
+                disabled={busy}
+                onClick={() => {
+                  setEntryTab('ai');
+                  writePersistedAddEntryTab('ai');
+                }}
+                style={{
+                  color: entryTab === 'ai' ? '#0F0F12' : '#ACACB8',
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                AI chat
+              </button>
+            </div>
+          ) : (
+            expenseIncomeSeg
+          )}
         </div>
+        {showAiEntry && entryTab === 'manual' ? (
+          <div style={{ display: 'flex', width: '100%' }}>{expenseIncomeSeg}</div>
+        ) : null}
       </div>
 
+      {(!showAiEntry || entryTab === 'manual') ? (
+        <>
       <div
         style={{
           padding: '20px 24px 14px',
@@ -358,6 +427,8 @@ export function AddTransactionScreen({
           }}
         />
       </div>
+        </>
+      ) : null}
     </>
   );
 
@@ -420,13 +491,31 @@ export function AddTransactionScreen({
   if (asPage) {
     return (
       <div className="add-screen">
-        <div className="add-screen-body">
+        <div
+          className="add-screen-body"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            overflowY: showAiEntry && entryTab === 'ai' ? 'hidden' : undefined,
+          }}
+        >
           {formScroll}
+          {showAiEntry && entryTab === 'ai' && aiChat ? (
+            <TxnChatScreen
+              layout="embedded"
+              {...aiChat}
+              onTransactionsSaved={onClose}
+              onActivityChange={onAiActivity}
+            />
+          ) : null}
         </div>
-        <div className="add-screen-footer">
-          {keypadBlock}
-          {actionsRow}
-        </div>
+        {showAiEntry && entryTab === 'ai' ? null : (
+          <div className="add-screen-footer">
+            {keypadBlock}
+            {actionsRow}
+          </div>
+        )}
       </div>
     );
   }

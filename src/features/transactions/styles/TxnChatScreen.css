@@ -7,6 +7,14 @@
   overflow: hidden;
 }
 
+.txn-chat-page--embedded {
+  min-height: 0;
+}
+
+.txn-chat-page--embedded .txn-chat-scroll {
+  padding-top: 4px;
+}
+
 .txn-chat-scroll {
   flex: 1;
   min-height: 0;

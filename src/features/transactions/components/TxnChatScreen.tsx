@@ -9,6 +9,12 @@ import { matchCategoryRowByHint } from '@/features/transactions/lib/matchCategor
 import type { TransactionKind } from '@/types/ledger';
 import { currencyPrefix } from '@/utils/money';
 import type { ToastPayload } from '@/shared/components/Toast';
+import type { PersistedChatDraft } from '@/features/transactions/lib/txnUiLocalStorage';
+import {
+  readPersistedAiChat,
+  writePersistedAiChat,
+  clearPersistedAiChat,
+} from '@/features/transactions/lib/txnUiLocalStorage';
 import '@/features/transactions/styles/TxnChatScreen.css';
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -60,7 +66,30 @@ function resolveDrafts(
   return out;
 }
 
-type TxnChatScreenProps = {
+/** Re-resolve category ids after loading from localStorage (categories may have changed). */
+function refreshResolvedDrafts(
+  drafts: PersistedChatDraft[],
+  catsExpense: CategoryRow[],
+  catsIncome: CategoryRow[],
+): ResolvedDraft[] {
+  return drafts.map((d) => {
+    const kind = d.kind === 'income' ? 'income' : 'expense';
+    const row = matchCategoryRowByHint(d.category_label, kind, catsExpense, catsIncome);
+    return {
+      kind,
+      title: d.title,
+      amount: d.amount,
+      category_label: d.category_label,
+      date: d.date,
+      note: d.note ?? null,
+      category_id: row.id,
+      occurred_at: localMidnightIsoFromYmd(d.date),
+      resolved_category_label: row.label,
+    };
+  });
+}
+
+export type TxnChatShellProps = {
   catsExpense: CategoryRow[];
   catsIncome: CategoryRow[];
   addTransaction: (t: {
@@ -81,15 +110,61 @@ type TxnChatScreenProps = {
   categoriesError: string | null;
 };
 
+export type TxnChatScreenProps = TxnChatShellProps & {
+  /** Full-page (own header + back) vs embedded under add flow */
+  layout?: 'page' | 'embedded';
+  /** After successful batch save; default is navigate home (page only). */
+  onTransactionsSaved?: () => void;
+  /** Fires when a send or batch save is in flight (for disabling parent chrome). */
+  onActivityChange?: (busy: boolean) => void;
+};
+
 export function TxnChatScreen(props: TxnChatScreenProps) {
+  const layout = props.layout ?? 'page';
+  const onTransactionsSaved = props.onTransactionsSaved;
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const restoreAttempted = useRef(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatTurn[]>([]);
+  const [chatHydrated, setChatHydrated] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? '';
+
+  useEffect(() => {
+    if (restoreAttempted.current) return;
+    if (props.catsExpense.length === 0 && props.catsIncome.length === 0) return;
+    restoreAttempted.current = true;
+    const saved = readPersistedAiChat();
+    if (saved?.messages?.length) {
+      setMessages(
+        saved.messages.map((m) => ({
+          ...m,
+          drafts: m.drafts?.length
+            ? refreshResolvedDrafts(m.drafts, props.catsExpense, props.catsIncome)
+            : undefined,
+        })),
+      );
+    }
+    if (saved && typeof saved.input === 'string') setInput(saved.input);
+    setChatHydrated(true);
+  }, [props.catsExpense, props.catsIncome]);
+
+  useEffect(() => {
+    if (!chatHydrated) return;
+    writePersistedAiChat({ v: 1, messages, input });
+  }, [chatHydrated, messages, input]);
+
+  const busy = Boolean(sending || savingId);
+  const onActivityChange = props.onActivityChange;
+  useEffect(() => {
+    onActivityChange?.(busy);
+    return () => {
+      onActivityChange?.(false);
+    };
+  }, [busy, onActivityChange]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -100,6 +175,11 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
   const onClose = useCallback(() => {
     if (!sending && !savingId) navigate(-1);
   }, [navigate, sending, savingId]);
+
+  const finishSave = useCallback(() => {
+    if (onTransactionsSaved) onTransactionsSaved();
+    else navigate('/');
+  }, [navigate, onTransactionsSaved]);
 
   const send = useCallback(async () => {
     const text = input.trim();
@@ -192,10 +272,10 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
           amount: drafts.reduce((s, x) => s + x.amount, 0),
         });
         setTimeout(() => props.setToast(null), 2400);
-        setMessages((prev) =>
-          prev.map((m) => (m.id === turnId ? { ...m, drafts: undefined } : m)),
-        );
-        navigate('/');
+        clearPersistedAiChat();
+        setMessages([]);
+        setInput('');
+        finishSave();
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Could not save';
         props.setToast({ id: Date.now(), kind: 'error', message: msg });
@@ -204,24 +284,28 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
         setSavingId(null);
       }
     },
-    [navigate, props, savingId],
+    [finishSave, props, savingId],
   );
 
   const cur = currencyPrefix(props.currency);
 
   return (
-    <div className="txn-chat-page">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
-        <button type="button" disabled={Boolean(sending || savingId)} onClick={onClose} className="sheet-close-btn" aria-label="Close">
-          <IClose size={16} />
-        </button>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.4, color: '#0F0F12' }}>AI chat</div>
-          <div style={{ fontSize: 12, color: '#9B9BA8', marginTop: 2 }}>Describe income or expenses in plain language</div>
+    <div className={`txn-chat-page${layout === 'embedded' ? ' txn-chat-page--embedded' : ''}`}>
+      {layout === 'page' ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
+          <button type="button" disabled={busy} onClick={onClose} className="sheet-close-btn" aria-label="Close">
+            <IClose size={16} />
+          </button>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.4, color: '#0F0F12' }}>AI chat</div>
+            <div style={{ fontSize: 12, color: '#9B9BA8', marginTop: 2 }}>Describe income or expenses in plain language</div>
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <DataErrorBanner message={props.combinedError} onRetry={props.onRetryData} busy={props.retrying} />
+      {layout === 'page' ? (
+        <DataErrorBanner message={props.combinedError} onRetry={props.onRetryData} busy={props.retrying} />
+      ) : null}
 
       {!apiKey ? (
         <div className="txn-chat-hint">
