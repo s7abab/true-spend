@@ -5,6 +5,7 @@ const PATH_TO_TAB: Record<string, TabId> = {
   '/home': 'home',
   '/stats': 'stats',
   '/history': 'history',
+  '/chat': 'chat',
   '/profile': 'profile',
   '/profile/categories': 'profile',
 };
@@ -13,6 +14,7 @@ const TAB_TO_PATH: Record<TabId, string> = {
   home: '/',
   stats: '/stats',
   history: '/history',
+  chat: '/chat',
   profile: '/profile',
 };
 
@@ -21,7 +23,7 @@ function normalizePathname(pathname: string): string {
   return pathname;
 }
 
-/** Map current URL path to a primary tab (profile covers /profile/categories). */
+/** Map current URL path to a primary tab (`profile` = /profile* for nav highlight; profile is not a bottom tab). */
 export function tabFromPathname(pathname: string): TabId {
   const n = normalizePathname(pathname);
   return PATH_TO_TAB[n] ?? 'home';

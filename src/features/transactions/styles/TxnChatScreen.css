@@ -91,7 +91,8 @@
   background: #fff;
   display: flex;
   gap: 10px;
-  align-items: flex-end;
+  /* Stretch so the Send control matches the textarea height; center label inside the button */
+  align-items: stretch;
 }
 
 .txn-chat-input {
@@ -108,6 +109,8 @@
   color: #0F0F12;
   background: #FAFAFB;
   outline: none;
+  box-sizing: border-box;
+  align-self: stretch;
 }
 
 .txn-chat-input:focus {
@@ -117,7 +120,7 @@
 
 .txn-chat-send {
   flex-shrink: 0;
-  height: 44px;
+  min-height: 44px;
   padding: 0 16px;
   border-radius: 12px;
   border: none;
@@ -127,6 +130,11 @@
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
+  box-sizing: border-box;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .txn-chat-send:disabled {

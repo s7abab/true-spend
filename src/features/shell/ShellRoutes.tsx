@@ -18,7 +18,7 @@ import { AppBootLoading } from '@/shared/components/loading';
 import { AppTopBar } from '@/shared/components/AppTopBar';
 import { DataErrorBanner } from '@/shared/components/DataErrorBanner';
 import { AddTransactionScreen } from '@/features/transactions/components/AddTransactionScreen';
-import { IHome, IChart, IList, IUser, IPlus, IChevLeft } from '@/shared/components/Icons';
+import { IHome, IChart, IList, IPlus, IChevLeft, ISparkle } from '@/shared/components/Icons';
 import type { ProfileRow } from '@/features/profile/types';
 import type { User } from '@supabase/supabase-js';
 import type { ToastPayload } from '@/shared/components/Toast';
@@ -43,6 +43,9 @@ const ProfileScreen = lazy(() =>
 );
 const CategoriesScreen = lazy(() =>
   import('@/features/categories/components/CategoriesScreen').then((m) => ({ default: m.CategoriesScreen })),
+);
+const TxnChatScreen = lazy(() =>
+  import('@/features/transactions/components/TxnChatScreen').then((m) => ({ default: m.TxnChatScreen })),
 );
 
 const ACCENT = '#0F0F12';
@@ -71,10 +74,10 @@ type TabDef = { id: TabId; label: string; to: string; Icon: ComponentType<{ size
 
 const TABS: (TabDef | null)[] = [
   { id: 'home', label: 'Home', to: '/', Icon: IHome },
-  { id: 'stats', label: 'Stats', to: '/stats', Icon: IChart },
+  { id: 'chat', label: 'AI', to: '/chat', Icon: ISparkle },
   null,
   { id: 'history', label: 'History', to: '/history', Icon: IList },
-  { id: 'profile', label: 'Profile', to: '/profile', Icon: IUser },
+  { id: 'stats', label: 'Stats', to: '/stats', Icon: IChart },
 ];
 
 type CatApi = ReturnType<typeof import('@/features/categories/hooks/useCategories').useCategories>;
@@ -113,6 +116,26 @@ function RouteFallback() {
   return <AppBootLoading />;
 }
 
+function AiChatTabRoute(props: ShellRoutesProps) {
+  return (
+    <TxnChatScreen
+      layout="embedded"
+      onTransactionsSaved={() => {}}
+      catsExpense={props.catsExpense}
+      catsIncome={props.catsIncome}
+      addTransaction={props.addTransaction}
+      currency={props.currency}
+      combinedError={props.combinedError}
+      retrying={props.retrying}
+      onRetryData={props.onRetryData}
+      setToast={props.setToast}
+      canOpenAdd={props.canOpenAdd}
+      categoriesLoading={props.categoriesLoading}
+      categoriesError={props.categoriesError}
+    />
+  );
+}
+
 function TabShellLayout(props: ShellRoutesProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -139,6 +162,13 @@ function TabShellLayout(props: ShellRoutesProps) {
     <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Stats</div>
   ) : activeTab === 'history' ? (
     <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>History</div>
+  ) : activeTab === 'chat' ? (
+    <div>
+      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>AI chat</div>
+      <div style={{ fontSize: 12, color: '#ACACB8', fontWeight: 500, marginTop: 2 }}>
+        Describe income or expenses in plain language
+      </div>
+    </div>
   ) : activeTab === 'profile' ? (
     <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Profile</div>
   ) : null;
@@ -187,7 +217,7 @@ function TabShellLayout(props: ShellRoutesProps) {
                         ? 'Still loading categories…'
                         : props.categoriesError
                           ? 'Fix the data connection, then try again.'
-                          : 'Add a category first (Profile → Categories).';
+                          : 'Add a category first (avatar → Profile → Categories).';
                       props.setToast({ id: Date.now(), kind: 'error', message: msg });
                       setTimeout(() => props.setToast(null), 3200);
                       return;
@@ -204,7 +234,7 @@ function TabShellLayout(props: ShellRoutesProps) {
             );
           }
           const Icon = t.Icon;
-          const tabActive = activeTab === t.id || (t.id === 'profile' && isCategories);
+          const tabActive = activeTab === t.id;
           const goTab = () => {
             if (location.pathname === t.to) return;
             void navigate(t.to);
@@ -245,35 +275,6 @@ function AddTransactionRoute(props: ShellRoutesProps) {
   };
 
   useSwipeBack({ enabled: true, onBack: closeTxnSheet });
-
-  const aiChatShell = useMemo(
-    () => ({
-      catsExpense: props.catsExpense,
-      catsIncome: props.catsIncome,
-      addTransaction: props.addTransaction,
-      currency: props.currency,
-      combinedError: props.combinedError,
-      retrying: props.retrying,
-      onRetryData: props.onRetryData,
-      setToast: props.setToast,
-      canOpenAdd: props.canOpenAdd,
-      categoriesLoading: props.categoriesLoading,
-      categoriesError: props.categoriesError,
-    }),
-    [
-      props.catsExpense,
-      props.catsIncome,
-      props.addTransaction,
-      props.currency,
-      props.combinedError,
-      props.retrying,
-      props.onRetryData,
-      props.setToast,
-      props.canOpenAdd,
-      props.categoriesLoading,
-      props.categoriesError,
-    ],
-  );
 
   const onSaveTxn = async (t: {
     kind: string;
@@ -348,7 +349,7 @@ function AddTransactionRoute(props: ShellRoutesProps) {
                 onClose={closeTxnSheet}
                 onSave={onSaveTxn}
                 asPage
-                aiChat={stateTxn ? null : aiChatShell}
+                aiChat={null}
               />
             </motion.div>
           </div>
@@ -522,7 +523,7 @@ export function ShellRoutes(props: ShellRoutesProps) {
           ? 'Still loading categories…'
           : categoriesError
             ? 'Fix the data connection, then try again.'
-            : 'Add at least one category first (Categories tab).';
+            : 'Add at least one category first (avatar → Profile → Categories).';
         setToast({ id: Date.now(), kind: 'error', message: msg });
         setTimeout(() => setToast(null), 3200);
         return;
@@ -538,7 +539,6 @@ export function ShellRoutes(props: ShellRoutesProps) {
       <Route path="/categories" element={<Navigate to="/profile/categories" replace />} />
 
       <Route path="/add" element={<AddTransactionRoute {...props} />} />
-      <Route path="/chat" element={<Navigate to="/add" replace />} />
       <Route path="/edit/:txnId" element={<EditTransactionRoute {...props} />} />
 
       <Route path="/" element={<TabShellLayout {...props} />}>
@@ -583,6 +583,7 @@ export function ShellRoutes(props: ShellRoutesProps) {
             />
           }
         />
+        <Route path="chat" element={<AiChatTabRoute {...props} />} />
         <Route path="profile" element={<ProfileStackLayout />}>
           <Route
             index

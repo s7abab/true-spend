@@ -1,9 +1,13 @@
+import type { PostgrestError } from '@supabase/supabase-js';
+import type { DbTransactionRow } from '@/utils/txnMap';
 import { supabase } from '@/shared/lib/supabase';
 
 const PAGE_LIMIT = 50;
 
-function withSignal<T extends { abortSignal: (s: AbortSignal) => T }>(q: T, signal?: AbortSignal): T {
-  return signal ? q.abortSignal(signal) : q;
+function withSignal<T>(q: T, signal?: AbortSignal): T {
+  if (!signal) return q;
+  const c = q as T & { abortSignal?: (s: AbortSignal) => T };
+  return typeof c.abortSignal === 'function' ? c.abortSignal(signal) : q;
 }
 
 export type HomeMetricsParams = {
@@ -77,14 +81,21 @@ export async function listRecentTransactions(userId: string, limit = 5, opts: { 
   return withSignal(q, opts.signal);
 }
 
-export async function fetchTransactionById(userId: string, id: string, opts: { signal?: AbortSignal } = {}) {
+export async function fetchTransactionById(
+  userId: string,
+  id: string,
+  opts: { signal?: AbortSignal } = {},
+): Promise<{ data: DbTransactionRow | null; error: PostgrestError | null }> {
   const q = supabase
     .from('transactions')
     .select('id, kind, category_id, amount, title, note, occurred_at')
     .eq('user_id', userId)
     .eq('id', id)
     .maybeSingle();
-  return withSignal(q, opts.signal);
+  return (await withSignal(q, opts.signal)) as {
+    data: DbTransactionRow | null;
+    error: PostgrestError | null;
+  };
 }
 
 export type TxnPageCursor = { occurred_at: string; id: string } | null;
