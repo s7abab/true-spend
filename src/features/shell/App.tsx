@@ -1,4 +1,4 @@
-import { useState, useCallback, type ComponentType } from 'react';
+import { useState, useCallback, useEffect, type ComponentType } from 'react';
 import type { MappedTxn } from '@/utils/txnMap';
 import { AnimatePresence, motion } from 'framer-motion';
 import { HomeScreen } from '@/features/transactions/components/HomeScreen';
@@ -21,6 +21,11 @@ import type { ProfileRow } from '@/features/profile/types';
 import type { User } from '@supabase/supabase-js';
 import '@/features/shell/styles/App.css';
 import type { TabId } from '@/features/shell/types/navigation';
+import {
+  pathnameForTab,
+  shouldReplacePathname,
+  tabFromPathname,
+} from '@/features/shell/lib/tabRoutes';
 
 const ACCENT = '#0F0F12';
 
@@ -115,7 +120,15 @@ function AuthedApp({ user }: { user: User | null }) {
   } = useTransactions();
   const currency = profile?.currency || 'INR';
 
-  const [tab, setTab] = useState<TabId>('home');
+  const [tab, setTab] = useState<TabId>(() => {
+    if (typeof window === 'undefined') return 'home';
+    const path = window.location.pathname;
+    const t = tabFromPathname(path);
+    if (shouldReplacePathname(path, t)) {
+      window.history.replaceState(null, '', pathnameForTab(t));
+    }
+    return t;
+  });
   const [adding, setAdding] = useState(false);
   const [editingTxn, setEditingTxn] = useState<MappedTxn | null>(null);
   const [toast, setToast] = useState<ToastPayload | null>(null);
@@ -136,6 +149,27 @@ function AuthedApp({ user }: { user: User | null }) {
       setRetrying(false);
     }
   }, [refetchProfile, refetchCategories, refetchTransactions]);
+
+  const navigateToTab = useCallback((next: TabId) => {
+    const nextPath = pathnameForTab(next);
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState(null, '', nextPath);
+    }
+    setTab(next);
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const path = window.location.pathname;
+      const t = tabFromPathname(path);
+      setTab(t);
+      if (shouldReplacePathname(path, t)) {
+        window.history.replaceState(null, '', pathnameForTab(t));
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   const canOpenAdd =
     !categoriesLoading && !categoriesError && (catsExpense.length > 0 || catsIncome.length > 0);
@@ -272,7 +306,7 @@ function AuthedApp({ user }: { user: User | null }) {
         accent={ACCENT}
         resolveCat={resolveCat}
         currency={currency}
-        onSeeAll={() => setTab('history')}
+        onSeeAll={() => navigateToTab('history')}
         onTxnPress={openEditTxn}
       />
     ),
@@ -310,7 +344,7 @@ function AuthedApp({ user }: { user: User | null }) {
         updateProfile={updateProfile}
         lists={lists}
         onExportTransactions={exportAllTransactions}
-        onGoToCategories={() => setTab('categories')}
+        onGoToCategories={() => navigateToTab('categories')}
       />
     ),
   }[tab];
@@ -342,7 +376,7 @@ function AuthedApp({ user }: { user: User | null }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <button
           type="button"
-          onClick={() => setTab('profile')}
+          onClick={() => navigateToTab('profile')}
           style={{
             display: 'flex', alignItems: 'center', gap: 3,
             border: 'none', background: 'none', cursor: 'pointer',
@@ -377,7 +411,7 @@ function AuthedApp({ user }: { user: User | null }) {
     <div className="app-shell">
       <div className={`page-scroll${adding ? ' page-scroll--no-nav' : ''}`}>
         {!adding && (
-          <AppTopBar onProfile={() => setTab('profile')} profile={profile} user={user}>
+          <AppTopBar onProfile={() => navigateToTab('profile')} profile={profile} user={user}>
             {topBarContent}
           </AppTopBar>
         )}
@@ -435,7 +469,7 @@ function AuthedApp({ user }: { user: User | null }) {
                 type="button"
                 className={`nav-btn${active ? ' active' : ''}`}
                 aria-current={active ? 'page' : undefined}
-                onClick={() => setTab(t.id)}
+                onClick={() => navigateToTab(t.id)}
               >
                 <Icon size={22} stroke={active ? 2.3 : 1.8} />
                 {t.label}
