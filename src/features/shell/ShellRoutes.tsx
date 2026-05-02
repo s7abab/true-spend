@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import {
   Navigate,
   Outlet,
@@ -117,6 +117,23 @@ export type ShellRoutesProps = {
 
 function RouteFallback() {
   return <AppBootLoading />;
+}
+
+function ShellDocumentTitle() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    let section = 'Truspend';
+    if (pathname === '/' || pathname === '/home') section = 'Home';
+    else if (pathname.startsWith('/stats')) section = 'Stats';
+    else if (pathname.startsWith('/history')) section = 'History';
+    else if (pathname.startsWith('/profile/categories')) section = 'Categories';
+    else if (pathname.startsWith('/profile')) section = 'Profile';
+    else if (pathname.startsWith('/add')) section = 'Add transaction';
+    else if (pathname.startsWith('/chat')) section = TXN_ASSISTANT_DISPLAY_NAME;
+    else if (pathname.startsWith('/edit/')) section = 'Edit transaction';
+    document.title = `${section} · Truspend`;
+  }, [pathname]);
+  return null;
 }
 
 function AiChatRoute(props: ShellRoutesProps) {
@@ -555,7 +572,9 @@ export function ShellRoutes(props: ShellRoutesProps) {
   );
 
   return (
-    <Routes>
+    <>
+      <ShellDocumentTitle />
+      <Routes>
       <Route path="/home" element={<Navigate to="/" replace />} />
       <Route path="/categories" element={<Navigate to="/profile/categories" replace />} />
 
@@ -640,5 +659,6 @@ export function ShellRoutes(props: ShellRoutesProps) {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

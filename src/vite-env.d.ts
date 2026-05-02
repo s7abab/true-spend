@@ -5,6 +5,12 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string;
   readonly VITE_SUPABASE_ANON_KEY: string;
   /**
+   * Public site origin for SEO (canonical, Open Graph, sitemap). No trailing slash.
+   * Example production: https://app.example.com — set in CI for correct previews.
+   * Local: http://localhost:5173
+   */
+  readonly VITE_PUBLIC_SITE_URL?: string;
+  /**
    * Which LLM backend powers /chat. `openrouter` | `gemini`.
    * If unset, OpenRouter is used when `VITE_OPENROUTER_API_KEY` is set, else Gemini when `VITE_GEMINI_API_KEY` is set.
    */
