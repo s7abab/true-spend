@@ -183,14 +183,21 @@ export function SignInScreen() {
             flexShrink: 0,
           }}
         >
-          <div style={{
-            width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-            background: '#0F0F12',
-            display: 'grid', placeItems: 'center',
-            boxShadow: '0 8px 24px -8px rgba(15,15,18,0.45)',
-          }}>
-            <span style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: -0.5 }}>T</span>
-          </div>
+          <img
+            src="/logo.svg"
+            alt="Truspend"
+            width={44}
+            height={44}
+            decoding="async"
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              flexShrink: 0,
+              display: 'block',
+              boxShadow: '0 8px 24px -8px rgba(15,15,18,0.45)',
+            }}
+          />
           <div>
             <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: -0.5, color: '#0F0F12' }}>Truspend</div>
             <div style={{ fontSize: 11, color: '#A0A0B0', fontWeight: 500, marginTop: 1 }}>Personal finance tracker</div>

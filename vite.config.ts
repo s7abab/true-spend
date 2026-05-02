@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['vite.svg', 'manifest.webmanifest'],
+      includeAssets: ['logo.svg', 'manifest.webmanifest'],
       manifest: {
         name: 'Truspend',
         short_name: 'Truspend',
@@ -22,7 +22,7 @@ export default defineConfig({
         orientation: 'portrait-primary',
         icons: [
           {
-            src: '/vite.svg',
+            src: '/logo.svg',
             sizes: 'any',
             type: 'image/svg+xml',
             purpose: 'any',

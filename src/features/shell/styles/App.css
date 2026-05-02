@@ -75,6 +75,24 @@
   -webkit-user-select: none;
 }
 
+.app-top-bar__brand {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-top-bar__logo {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: block;
+  object-fit: cover;
+  box-shadow: 0 2px 10px rgba(15, 15, 18, 0.12);
+}
+
 .app-top-bar__title {
   flex: 1;
   min-width: 0;
@@ -842,6 +860,16 @@ button.txn-row.txn-row-btn:active {
   border-bottom: 1px solid #F5F5F8;
 }
 .settings-row:last-child { border-bottom: none; }
+
+a.settings-row.settings-row--link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+a.settings-row.settings-row--link:active {
+  background: #fafafb;
+}
 
 /* ── Stats donut ── */
 /* Parent must be position: relative with explicit size (see StatsScreen). */

@@ -30,7 +30,10 @@ export function AppTopBar({ children, onProfile, profile, user }: AppTopBarProps
 
   return (
     <div className="app-top-bar screen-header" style={{ display: 'flex', gap: 12 }}>
-      <div className="app-top-bar__title">{children}</div>
+      <div className="app-top-bar__brand">
+        <img className="app-top-bar__logo" src="/logo.svg" alt="Truspend" width={40} height={40} decoding="async" />
+        <div className="app-top-bar__title">{children}</div>
+      </div>
       <div className="app-top-bar__profile">
         <button
           type="button"

@@ -85,6 +85,9 @@ type SettingsItem = {
   danger?: boolean;
   soon?: boolean;
   onClick?: () => void | Promise<void>;
+  /** Static file download (e.g. brand asset) */
+  downloadHref?: string;
+  downloadFileName?: string;
 };
 
 type ProfileScreenProps = {
@@ -181,6 +184,12 @@ export function ProfileScreen({
           title: 'Data',
           items: [
             { label: exporting ? 'Exporting…' : 'Export data', onClick: () => void exportData() },
+            {
+              label: 'Download app logo',
+              sub: 'SVG · same as app icon & favicon',
+              downloadHref: '/logo.svg',
+              downloadFileName: 'truspend-logo.svg',
+            },
             { label: 'Sign out', danger: true, onClick: () => void signOut() },
           ] satisfies SettingsItem[],
         },
@@ -225,26 +234,11 @@ export function ProfileScreen({
       {groups.map((group, gi) => (
         <div key={gi} className="settings-group">
           {group.items.map((it, i) => {
-            const interactive = typeof it.onClick === 'function' && !it.soon;
-            return (
-              <div
-                key={i}
-                className="settings-row"
-                onClick={interactive ? () => void it.onClick?.() : undefined}
-                onKeyDown={
-                  interactive
-                    ? (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          void it.onClick?.();
-                        }
-                      }
-                    : undefined
-                }
-                role={interactive ? 'button' : undefined}
-                tabIndex={interactive ? 0 : undefined}
-                style={interactive ? { cursor: 'pointer' } : undefined}
-              >
+            const isDownload = Boolean(it.downloadHref && !it.soon);
+            const interactive = typeof it.onClick === 'function' && !it.soon && !isDownload;
+            const rowClass = `settings-row${isDownload ? ' settings-row--link' : ''}`;
+            const inner = (
+              <>
                 <span
                   style={{
                     fontSize: 15,
@@ -260,6 +254,40 @@ export function ProfileScreen({
                     <span style={{ fontSize: 13, color: '#ACACB8' }}>{it.sub}</span>
                   ) : null}
                 </div>
+              </>
+            );
+            if (isDownload) {
+              return (
+                <a
+                  key={i}
+                  href={it.downloadHref}
+                  download={it.downloadFileName ?? 'truspend-logo.svg'}
+                  className={rowClass}
+                >
+                  {inner}
+                </a>
+              );
+            }
+            return (
+              <div
+                key={i}
+                className={rowClass}
+                onClick={interactive ? () => void it.onClick?.() : undefined}
+                onKeyDown={
+                  interactive
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          void it.onClick?.();
+                        }
+                      }
+                    : undefined
+                }
+                role={interactive ? 'button' : undefined}
+                tabIndex={interactive ? 0 : undefined}
+                style={interactive ? { cursor: 'pointer' } : undefined}
+              >
+                {inner}
               </div>
             );
           })}
