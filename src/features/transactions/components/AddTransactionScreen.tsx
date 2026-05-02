@@ -15,6 +15,7 @@ import {
   writePersistedAddEntryTab,
 } from '@/features/transactions/lib/txnUiLocalStorage';
 import { TxnChatScreen, type TxnChatShellProps } from '@/features/transactions/components/TxnChatScreen';
+import { TXN_ASSISTANT_DISPLAY_NAME } from '@/features/transactions/lib/txnAssistantDisplayName';
 
 function getToday(): Date {
   const d = new Date();
@@ -320,7 +321,7 @@ export function AddTransactionScreen({
                   fontWeight: 600,
                 }}
               >
-                AI chat
+                {TXN_ASSISTANT_DISPLAY_NAME}
               </button>
             </div>
           ) : (

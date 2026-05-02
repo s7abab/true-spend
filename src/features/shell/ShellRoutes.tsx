@@ -18,6 +18,7 @@ import { AppBootLoading } from '@/shared/components/loading';
 import { AppTopBar } from '@/shared/components/AppTopBar';
 import { DataErrorBanner } from '@/shared/components/DataErrorBanner';
 import { AddTransactionScreen } from '@/features/transactions/components/AddTransactionScreen';
+import { TXN_ASSISTANT_DISPLAY_NAME } from '@/features/transactions/lib/txnAssistantDisplayName';
 import { IHome, IChart, IList, IPlus, IChevLeft, ISparkle } from '@/shared/components/Icons';
 import type { ProfileRow } from '@/features/profile/types';
 import type { User } from '@supabase/supabase-js';
@@ -74,7 +75,7 @@ type TabDef = { id: TabId; label: string; to: string; Icon: ComponentType<{ size
 
 const TABS: (TabDef | null)[] = [
   { id: 'home', label: 'Home', to: '/', Icon: IHome },
-  { id: 'chat', label: 'AI', to: '/chat', Icon: ISparkle },
+  { id: 'chat', label: TXN_ASSISTANT_DISPLAY_NAME, to: '/chat', Icon: ISparkle },
   null,
   { id: 'history', label: 'History', to: '/history', Icon: IList },
   { id: 'stats', label: 'Stats', to: '/stats', Icon: IChart },
@@ -167,12 +168,7 @@ function TabShellLayout(props: ShellRoutesProps) {
   ) : activeTab === 'history' ? (
     <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>History</div>
   ) : activeTab === 'chat' ? (
-    <div>
-      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>AI chat</div>
-      <div style={{ fontSize: 12, color: '#ACACB8', fontWeight: 500, marginTop: 2 }}>
-        Describe income, expenses, or transfers in plain language
-      </div>
-    </div>
+    <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>{TXN_ASSISTANT_DISPLAY_NAME}</div>
   ) : activeTab === 'profile' ? (
     <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Profile</div>
   ) : null;

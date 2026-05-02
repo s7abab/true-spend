@@ -21,34 +21,9 @@ import {
   writePersistedAiChat,
   clearPersistedAiChat,
 } from '@/features/transactions/lib/txnUiLocalStorage';
+import { TXN_ASSISTANT_DISPLAY_NAME } from '@/features/transactions/lib/txnAssistantDisplayName';
 import { TxnChatImportBar, type TxnChatImportBarHandle } from '@/features/transactions/components/TxnChatImportBar';
 import '@/features/transactions/styles/TxnChatScreen.css';
-
-type ChatStarter =
-  | { id: string; label: string; kind: 'file' }
-  | { id: string; label: string; kind: 'text'; value: string };
-
-const CHAT_STARTERS: ChatStarter[] = [
-  { id: 'import', label: 'Import CSV, Excel, or PDF', kind: 'file' },
-  {
-    id: 'day',
-    label: "Log today's purchases",
-    kind: 'text',
-    value: 'Coffee 120, lunch 220, groceries 450 today',
-  },
-  {
-    id: 'in',
-    label: 'Record income',
-    kind: 'text',
-    value: 'Salary credited 45000 on the 1st',
-  },
-  {
-    id: 'xfer',
-    label: 'Log a transfer (SIP, EMI, card bill...)',
-    kind: 'text',
-    value: 'SIP 5000, paid credit card bill 12000',
-  },
-];
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -313,7 +288,6 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
   const [sending, setSending] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [importBusy, setImportBusy] = useState(false);
-  const [importPanelOpen, setImportPanelOpen] = useState(false);
 
   const txnAi = useMemo(() => resolveTxnChatFromEnv(), []);
 
@@ -432,7 +406,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
         {
           id: `a-${Date.now()}`,
           role: 'assistant',
-          text: `I could not reach the AI (${msg}). Check your API key and network, then try again.`,
+          text: `Could not reach ${TXN_ASSISTANT_DISPLAY_NAME} (${msg}). Check your API key and network, then try again.`,
         },
       ]);
     } finally {
@@ -511,11 +485,8 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
           <button type="button" disabled={busy} onClick={onClose} className="sheet-close-btn" aria-label="Close">
             <IClose size={16} />
           </button>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.4, color: '#0F0F12' }}>AI chat</div>
-            <div style={{ fontSize: 12, color: '#9B9BA8', marginTop: 2 }}>
-              Describe income, expenses, or transfers in plain language
-            </div>
+          <div style={{ flex: 1, fontSize: 18, fontWeight: 700, letterSpacing: -0.4, color: '#0F0F12' }}>
+            {TXN_ASSISTANT_DISPLAY_NAME}
           </div>
         </div>
       ) : null}
@@ -543,7 +514,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
         {messages.length === 0 && !sending ? (
           <div className="txn-chat-hint" style={{ paddingTop: 24 }}>
             Type below or tap a starter. Include amounts in {cur} when you can — e.g. “Coffee 120 today”. Use + to
-            attach CSV, Excel, or PDF for column mapping and import.
+            attach CSV, Excel, or PDF for import data.
           </div>
         ) : null}
         {messages.map((m) => (
@@ -788,7 +759,6 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
             disabled={busy}
             canOpenAdd={props.canOpenAdd}
             onBusy={setImportBusy}
-            onPanelOpenChange={setImportPanelOpen}
             setToast={props.setToast}
             onImported={({ fileName, reply, transactions }) => {
               const txsForDrafts = filterTxnChatRowsForDraftUi(transactions);
@@ -808,28 +778,6 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
         ) : null}
         {txnAi.ok ? (
           <div className="txn-chat-composer">
-            {messages.length === 0 && !sending && !importBusy && !importPanelOpen ? (
-              <div className="txn-chat-starters" aria-label="Suggested prompts">
-                {CHAT_STARTERS.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className="txn-chat-starter"
-                    disabled={busy}
-                    onClick={() => {
-                      if (s.kind === 'file') {
-                        importBarRef.current?.openFilePicker();
-                        return;
-                      }
-                      setInput(s.value);
-                      queueMicrotask(() => textareaRef.current?.focus());
-                    }}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
             <div className="txn-chat-footer txn-chat-footer--composer">
               <button
                 type="button"
