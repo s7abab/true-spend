@@ -9,7 +9,11 @@ type CategoryInsert = {
   sort_order: number;
 };
 
-type CategoryPatch = { label: string; icon: string };
+export type CategoryRowPatch = {
+  label?: string;
+  icon?: string;
+  sort_order?: number;
+};
 
 export async function listCategories(userId: string) {
   return supabase
@@ -25,7 +29,7 @@ export async function insertCategory(row: CategoryInsert) {
   return supabase.from('categories').insert(row).select().maybeSingle();
 }
 
-export async function updateCategoryRow(userId: string, id: string, patch: CategoryPatch) {
+export async function updateCategoryRow(userId: string, id: string, patch: CategoryRowPatch) {
   return supabase
     .from('categories')
     .update(patch)

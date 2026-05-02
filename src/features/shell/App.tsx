@@ -91,6 +91,8 @@ function AuthedApp({ user }: { user: User | null }) {
     addCategory,
     removeCategory,
     updateCategory,
+    reorderCategory,
+    reordering: categoriesReordering,
     loading: categoriesLoading,
     error: categoriesError,
     refetch: refetchCategories,
@@ -332,6 +334,8 @@ function AuthedApp({ user }: { user: User | null }) {
             onAdd={addCategory}
             onRemove={removeCategory}
             onUpdate={updateCategory}
+            onReorder={reorderCategory}
+            reordering={categoriesReordering}
           />
         );
       case 'profile':

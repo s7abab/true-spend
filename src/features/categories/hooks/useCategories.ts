@@ -66,13 +66,45 @@ export function useCategories() {
     }: {
       uid: string;
       id: string;
-      patch: { label: string; icon: string };
+      patch: categoriesApi.CategoryRowPatch;
     }) => {
       const out = await categoriesApi.updateCategoryRow(uid, id, patch);
       if (out.error) throw out.error;
       return out.data;
     },
     onSuccess: invalidate,
+  });
+
+  type ReorderPayload = { uid: string; updates: { id: string; sort_order: number }[] };
+
+  const reorderMutation = useMutation({
+    mutationFn: async ({ uid, updates }: ReorderPayload) => {
+      for (const u of updates) {
+        const out = await categoriesApi.updateCategoryRow(uid, u.id, { sort_order: u.sort_order });
+        if (out.error) throw out.error;
+      }
+    },
+    onMutate: async ({ uid, updates }) => {
+      const key = queryKeys.categories(uid);
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<CategoryRow[]>(key);
+      if (!previous) return { previous: undefined as CategoryRow[] | undefined };
+      const orderById = new Map(updates.map((u) => [u.id, u.sort_order]));
+      qc.setQueryData(
+        key,
+        previous.map((row) => {
+          const so = orderById.get(row.id);
+          return so !== undefined ? { ...row, sort_order: so } : row;
+        }),
+      );
+      return { previous };
+    },
+    onError: (_err, vars, ctx) => {
+      if (ctx?.previous && vars) qc.setQueryData(queryKeys.categories(vars.uid), ctx.previous);
+    },
+    onSettled: (_d, _e, vars) => {
+      if (vars) void qc.invalidateQueries({ queryKey: queryKeys.categories(vars.uid) });
+    },
   });
 
   const removeMutation = useMutation({
@@ -156,6 +188,39 @@ export function useCategories() {
     [userId, updateMutation],
   );
 
+  const reorderCategory = useCallback(
+    async (kind: TransactionKind, id: string, direction: 'up' | 'down') => {
+      if (!userId) return { error: new Error('not signed in') as Error };
+      const key = queryKeys.categories(userId);
+      const all = qc.getQueryData<CategoryRow[]>(key);
+      if (!all) return { error: new Error('Categories not loaded') };
+      const slice = all.filter((r) => rowKind(r) === kind).sort(compareCats);
+      const idx = slice.findIndex((c) => c.id === id);
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (idx < 0 || swapIdx < 0 || swapIdx >= slice.length) return { error: undefined };
+
+      const reordered = [...slice];
+      const tmp = reordered[idx]!;
+      reordered[idx] = reordered[swapIdx]!;
+      reordered[swapIdx] = tmp;
+
+      const prevOrder = new Map(slice.map((r) => [r.id, r.sort_order]));
+      const updates = reordered
+        .map((row, i) => ({ id: row.id, sort_order: i }))
+        .filter((u) => prevOrder.get(u.id) !== u.sort_order);
+
+      if (updates.length === 0) return { error: undefined };
+
+      try {
+        await reorderMutation.mutateAsync({ uid: userId, updates });
+        return { error: undefined };
+      } catch (e) {
+        return { error: e instanceof Error ? e : new Error(String(e)) };
+      }
+    },
+    [userId, qc, reorderMutation],
+  );
+
   const removeCategory = useCallback(
     async (_kind: TransactionKind, id: string) => {
       if (!userId) return { error: new Error('not signed in') as Error };
@@ -174,6 +239,7 @@ export function useCategories() {
     catsIncome,
     lists,
     loading: listQuery.isPending,
+    reordering: reorderMutation.isPending,
     error:
       listQuery.error instanceof Error
         ? listQuery.error.message
@@ -184,6 +250,7 @@ export function useCategories() {
     refetch: listQuery.refetch,
     addCategory,
     updateCategory,
+    reorderCategory,
     removeCategory,
   };
 }

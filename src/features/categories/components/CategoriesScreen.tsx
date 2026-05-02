@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
-import { CatIcon } from '@/shared/components/Icons';
+import { useState, useMemo, type CSSProperties } from 'react';
+import { CatIcon, IChevDown, IChevUp } from '@/shared/components/Icons';
 import { CategoryIconPicker } from '@/features/categories/components/CategoryIconPicker';
 import { sanitizeCategoryIcon } from '@/features/categories/utils/constants';
 import type { CategoryLists } from '@/features/categories/hooks/useCategories';
 import type { TransactionKind } from '@/types/ledger';
 import type { CategoryRow } from '@/features/categories/types';
+import '@/features/categories/styles/CategoriesScreen.css';
 
 type CategoriesScreenProps = {
   accent: string;
@@ -16,22 +17,33 @@ type CategoriesScreenProps = {
     id: string,
     patch: { label: string; icon: string },
   ) => Promise<{ error?: Error | null }>;
+  onReorder: (kind: TransactionKind, id: string, direction: 'up' | 'down') => Promise<{ error?: Error | undefined }>;
+  reordering?: boolean;
 };
 
-export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: CategoriesScreenProps) {
+export function CategoriesScreen({
+  accent,
+  lists,
+  onAdd,
+  onRemove,
+  onUpdate,
+  onReorder,
+  reordering = false,
+}: CategoriesScreenProps) {
   const [kind, setKind] = useState<TransactionKind>('expense');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [draftIcon, setDraftIcon] = useState('dots');
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('dots');
-  // confirmDeleteId: the id of the row showing the "Confirm delete?" prompt
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const rows = useMemo(() => (kind === 'expense' ? lists.expense : lists.income), [kind, lists]);
 
+  const hero = kind === 'expense' ? accent : '#22A06B';
+  const accentVar = { '--cat-accent': hero } as CSSProperties;
+
   const startEdit = (c: CategoryRow) => {
-    // Clear any pending delete confirmation when entering edit mode
     setConfirmDeleteId(null);
     setEditingId(c.id);
     setDraft(c.label);
@@ -62,11 +74,11 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
     }
   };
 
-  const hero = kind === 'expense' ? accent : '#22A06B';
+  const blockReorder = Boolean(editingId || confirmDeleteId || reordering);
 
   return (
-    <div className="categories-tab">
-      <div className="seg" style={{ margin: '0 16px 12px' }}>
+    <div className="categories-tab categories-page" style={accentVar}>
+      <div className="seg" style={{ margin: '0 16px 10px' }}>
         <div className="seg-thumb" style={{ left: kind === 'expense' ? 3 : '50%', width: 'calc(50% - 3px)' }} />
         {(['expense', 'income'] as const).map((k) => (
           <button
@@ -85,174 +97,145 @@ export function CategoriesScreen({ accent, lists, onAdd, onRemove, onUpdate }: C
         ))}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px' }}>
-        <div style={{ background: '#fff', borderRadius: 18, overflow: 'hidden', marginBottom: 12 }}>
-          {rows.map((c) => (
-            <div
-              key={c.id}
-              style={{ borderBottom: '1px solid #F5F5F8', padding: '12px 14px' }}
-            >
+      <p className="categories-page__hint">
+        Use the arrows to change the order categories appear in lists and when adding transactions. Top = first.
+      </p>
+
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        <ul className="categories-list" aria-label={`${kind} categories`}>
+          {rows.map((c, index) => (
+            <li key={c.id} className="categories-row">
               {editingId === c.id ? (
-                /* ── Edit mode ── */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <CategoryIconPicker value={draftIcon} onChange={setDraftIcon} activeTint={hero} />
-                  <input
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && void saveEdit()}
-                    autoFocus
-                    placeholder="Name"
-                    style={{
-                      width: '100%', height: 42, borderRadius: 10, border: 'none',
-                      background: '#F4F5F7', padding: '0 12px', fontSize: 15,
-                      outline: 'none', fontFamily: 'inherit',
-                    }}
-                  />
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <div className="categories-row__inner">
+                  <div className="categories-edit" style={{ width: '100%' }}>
+                    <CategoryIconPicker value={draftIcon} onChange={setDraftIcon} activeTint={hero} />
+                    <input
+                      className="categories-edit__input"
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && void saveEdit()}
+                      autoFocus
+                      placeholder="Category name"
+                    />
+                    <div className="categories-edit__actions">
+                      <button type="button" className="categories-edit__btn categories-edit__btn--ghost" onClick={cancelEdit}>
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="categories-edit__btn categories-edit__btn--primary"
+                        disabled={!draft.trim()}
+                        onClick={() => void saveEdit()}
+                        style={{
+                          background: draft.trim() ? hero : '#E8E8EE',
+                          color: draft.trim() ? '#fff' : '#ACACB8',
+                          cursor: draft.trim() ? 'pointer' : 'default',
+                        }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : confirmDeleteId === c.id ? (
+                <div className="categories-row__inner">
+                  <div className="categories-delete" style={{ width: '100%' }}>
+                    <div className="categories-delete__text">
+                      Delete <strong>{c.label}</strong>?
+                    </div>
                     <button
                       type="button"
-                      onClick={cancelEdit}
-                      style={{
-                        padding: '8px 14px', borderRadius: 10, border: 'none',
-                        background: '#F4F5F7', fontWeight: 600, fontSize: 13,
-                        cursor: 'pointer', fontFamily: 'inherit',
-                      }}
+                      className="categories-delete__btn categories-delete__btn--ghost"
+                      onClick={() => setConfirmDeleteId(null)}
                     >
                       Cancel
                     </button>
                     <button
                       type="button"
-                      disabled={!draft.trim()}
-                      onClick={() => void saveEdit()}
-                      style={{
-                        padding: '8px 14px', borderRadius: 10, border: 'none',
-                        background: draft.trim() ? hero : '#E8E8EE',
-                        color: draft.trim() ? '#fff' : '#ACACB8',
-                        fontWeight: 600, fontSize: 13,
-                        cursor: draft.trim() ? 'pointer' : 'default',
-                        fontFamily: 'inherit',
+                      className="categories-delete__btn categories-delete__btn--danger"
+                      onClick={async () => {
+                        setConfirmDeleteId(null);
+                        const { error } = await onRemove(kind, c.id);
+                        if (error) console.error('category delete failed', error);
                       }}
                     >
-                      Save
+                      Delete
                     </button>
                   </div>
-                </div>
-              ) : confirmDeleteId === c.id ? (
-                /* ── Delete confirmation ── */
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ flex: 1, fontSize: 14, fontWeight: 500, color: '#0F0F12' }}>
-                    Delete <strong>{c.label}</strong>?
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteId(null)}
-                    style={{
-                      padding: '7px 12px', borderRadius: 10, border: 'none',
-                      background: '#F4F5F7', fontWeight: 600, fontSize: 13,
-                      cursor: 'pointer', fontFamily: 'inherit',
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setConfirmDeleteId(null);
-                      const { error } = await onRemove(kind, c.id);
-                      if (error) console.error('category delete failed', error);
-                    }}
-                    style={{
-                      padding: '7px 12px', borderRadius: 10, border: 'none',
-                      background: '#FF4D6D', color: '#fff',
-                      fontWeight: 600, fontSize: 13,
-                      cursor: 'pointer', fontFamily: 'inherit',
-                    }}
-                  >
-                    Delete
-                  </button>
                 </div>
               ) : (
-                /* ── Normal row ── */
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ flexShrink: 0 }}>
-                    <CatIcon cat={c} size={40} radius={12} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: -0.2 }}>{c.label}</div>
-                  </div>
-                  {/* Hide Edit when another row is already open — prevents silent discard */}
-                  {!editingId && (
+                <div className="categories-row__inner">
+                  <div className="categories-row__reorder">
                     <button
                       type="button"
-                      onClick={() => startEdit(c)}
-                      style={{
-                        border: 'none', background: 'transparent', color: hero,
-                        fontWeight: 600, fontSize: 13, padding: '8px 4px',
-                        cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
-                      }}
+                      className="categories-row__reorder-btn"
+                      aria-label={`Move ${c.label} up`}
+                      disabled={blockReorder || index === 0}
+                      onClick={() => void onReorder(kind, c.id, 'up')}
                     >
-                      Edit
+                      <IChevUp size={16} stroke={2.2} />
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteId(c.id)}
-                    style={{
-                      border: 'none', background: 'transparent', color: '#ACACB8',
-                      fontSize: 22, lineHeight: 1, padding: '4px 8px',
-                      cursor: 'pointer', flexShrink: 0,
-                    }}
-                    aria-label={`Delete ${c.label}`}
-                  >
-                    ×
-                  </button>
+                    <button
+                      type="button"
+                      className="categories-row__reorder-btn"
+                      aria-label={`Move ${c.label} down`}
+                      disabled={blockReorder || index === rows.length - 1}
+                      onClick={() => void onReorder(kind, c.id, 'down')}
+                    >
+                      <IChevDown size={16} stroke={2.2} />
+                    </button>
+                  </div>
+                  <div className="categories-row__icon">
+                    <CatIcon cat={c} size={42} radius={13} />
+                  </div>
+                  <div className="categories-row__label">{c.label}</div>
+                  <div className="categories-row__actions">
+                    {!editingId && (
+                      <button type="button" className="categories-row__btn categories-row__btn--edit" onClick={() => startEdit(c)}>
+                        Edit
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="categories-row__btn categories-row__btn--delete"
+                      onClick={() => setConfirmDeleteId(c.id)}
+                      aria-label={`Delete ${c.label}`}
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
 
-      <div
-        style={{
-          padding: '12px 16px',
-          paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
-          background: '#F2F2F7',
-          borderTop: '1px solid #E8E8EE',
-        }}
-      >
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#ACACB8', marginBottom: 10 }}>New category</div>
+      <footer className="categories-footer">
+        <div className="categories-footer__title">New category</div>
         <CategoryIconPicker value={newIcon} onChange={setNewIcon} activeTint={hero} />
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <div className="categories-footer__row">
           <input
+            className="categories-footer__input"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void addNew()}
-            placeholder="Name"
-            style={{
-              flex: 1, height: 46, borderRadius: 12, border: 'none',
-              background: '#fff', padding: '0 14px', fontSize: 15,
-              outline: 'none', fontFamily: 'inherit',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-            }}
+            placeholder={`Add ${kind === 'expense' ? 'expense' : 'income'} category`}
           />
           <button
             type="button"
+            className="categories-footer__create"
             disabled={!newName.trim()}
             onClick={() => void addNew()}
             style={{
-              height: 46, padding: '0 20px', borderRadius: 12, border: 'none',
-              fontWeight: 700, fontSize: 14,
               background: newName.trim() ? hero : '#E8E8EE',
               color: newName.trim() ? '#fff' : '#ACACB8',
-              cursor: newName.trim() ? 'pointer' : 'default',
-              fontFamily: 'inherit', flexShrink: 0,
             }}
           >
-            Create
+            Add
           </button>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }

@@ -124,6 +124,11 @@ export const IChevDown = (p: IconBaseProps) => (
     <path d="M6 9l6 6 6-6" />
   </Icon>
 );
+export const IChevUp = (p: IconBaseProps) => (
+  <Icon {...p}>
+    <path d="M18 15l-6-6-6 6" />
+  </Icon>
+);
 export const IChevLeft = (p: IconBaseProps) => (
   <Icon {...p}>
     <path d="M15 6l-6 6 6 6" />
