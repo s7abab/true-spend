@@ -269,6 +269,15 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
                     className="txn-chat-save"
                     disabled={Boolean(savingId) || sending}
                     onClick={() => void saveDrafts(m.id, m.drafts!)}
+                    style={{
+                      background: m.drafts.every((d) => d.kind === 'income') ? '#22A06B' : '#0F0F12',
+                      boxShadow:
+                        savingId === m.id || sending
+                          ? 'none'
+                          : `0 10px 24px -8px ${
+                              m.drafts.every((d) => d.kind === 'income') ? '#22A06B99' : '#0F0F1299'
+                            }`,
+                    }}
                   >
                     {savingId === m.id ? 'Saving…' : `Save ${m.drafts.length} to ledger`}
                   </button>
