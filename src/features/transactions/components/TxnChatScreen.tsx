@@ -9,7 +9,7 @@ import { matchCategoryRowByHint } from '@/features/transactions/lib/matchCategor
 import type { TransactionKind } from '@/types/ledger';
 import { currencyPrefix } from '@/utils/money';
 import type { ToastPayload } from '@/shared/components/Toast';
-import type { PersistedChatDraft } from '@/features/transactions/lib/txnUiLocalStorage';
+import type { PersistedChatDraft, PersistedChatTurn } from '@/features/transactions/lib/txnUiLocalStorage';
 import {
   readPersistedAiChat,
   writePersistedAiChat,
@@ -19,18 +19,40 @@ import '@/features/transactions/styles/TxnChatScreen.css';
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
+export type ChatDraftRow = {
+  kind: 'expense' | 'income';
+  title: string;
+  amount: number | null;
+  dateYmd: string;
+  category_id: string;
+  resolved_category_label: string;
+  note: string | null;
+  occurred_at: string;
+};
+
+type DraftEdit = Partial<{
+  kind: 'expense' | 'income';
+  amount: number | null;
+  dateYmd: string;
+  category_id: string;
+  resolved_category_label: string;
+}>;
+
 type ChatTurn = {
   id: string;
   role: 'user' | 'assistant';
   text: string;
-  drafts?: ResolvedDraft[];
+  drafts?: ChatDraftRow[];
 };
 
-export type ResolvedDraft = GeminiDraftTransaction & {
-  category_id: string;
-  occurred_at: string;
-  resolved_category_label: string;
-};
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : String(n);
+}
+
+function todayYmd(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
 
 function localMidnightIsoFromYmd(ymd: string): string {
   const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -46,47 +68,120 @@ function localMidnightIsoFromYmd(ymd: string): string {
   return dt.toISOString();
 }
 
-function resolveDrafts(
+function mergeChatDraft(base: ChatDraftRow, edit: DraftEdit | undefined): ChatDraftRow {
+  if (!edit || Object.keys(edit).length === 0) return base;
+  const kind = edit.kind ?? base.kind;
+  const dateYmd = edit.dateYmd ?? base.dateYmd;
+  const amount = edit.amount !== undefined ? edit.amount : base.amount;
+  const category_id = edit.category_id ?? base.category_id;
+  const resolved_category_label = edit.resolved_category_label ?? base.resolved_category_label;
+  return {
+    kind,
+    title: base.title,
+    amount,
+    dateYmd,
+    category_id,
+    resolved_category_label,
+    note: base.note,
+    occurred_at: localMidnightIsoFromYmd(dateYmd),
+  };
+}
+
+function buildChatDrafts(
   txs: GeminiDraftTransaction[],
   catsExpense: CategoryRow[],
   catsIncome: CategoryRow[],
-): ResolvedDraft[] {
-  const out: ResolvedDraft[] = [];
+): ChatDraftRow[] {
+  const ymd = todayYmd();
+  const out: ChatDraftRow[] = [];
   for (const t of txs) {
-    const kind = t.kind as TransactionKind;
-    const row = matchCategoryRowByHint(t.category_label, kind, catsExpense, catsIncome);
+    const kind = t.kind === 'income' ? 'income' : 'expense';
+    const dateYmd =
+      t.date && typeof t.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.date.trim())
+        ? t.date.trim()
+        : ymd;
+    const hint = typeof t.category_label === 'string' ? t.category_label.trim() : '';
+    const row = matchCategoryRowByHint(hint, kind as TransactionKind, catsExpense, catsIncome);
+    const rawAmt = t.amount;
+    let amount: number | null = null;
+    if (rawAmt != null && typeof rawAmt === 'number' && Number.isFinite(rawAmt) && rawAmt > 0) {
+      amount = rawAmt;
+    } else if (rawAmt != null && typeof rawAmt === 'string' && String(rawAmt).trim()) {
+      const n = Number(rawAmt);
+      if (Number.isFinite(n) && n > 0) amount = n;
+    }
     out.push({
-      ...t,
-      kind: kind === 'income' ? 'income' : 'expense',
+      kind,
+      title: t.title.trim(),
+      amount,
+      dateYmd,
       category_id: row.id,
-      occurred_at: localMidnightIsoFromYmd(t.date),
       resolved_category_label: row.label,
+      note: t.note && String(t.note).trim() ? String(t.note).trim() : null,
+      occurred_at: localMidnightIsoFromYmd(dateYmd),
     });
   }
   return out;
 }
 
-/** Re-resolve category ids after loading from localStorage (categories may have changed). */
+type PersistedDraftLoose = PersistedChatDraft & { category_label?: string };
+
 function refreshResolvedDrafts(
   drafts: PersistedChatDraft[],
   catsExpense: CategoryRow[],
   catsIncome: CategoryRow[],
-): ResolvedDraft[] {
-  return drafts.map((d) => {
+): ChatDraftRow[] {
+  const ymd = todayYmd();
+  return drafts.map((raw) => {
+    const d = raw as PersistedDraftLoose;
     const kind = d.kind === 'income' ? 'income' : 'expense';
-    const row = matchCategoryRowByHint(d.category_label, kind, catsExpense, catsIncome);
+    const cats = kind === 'income' ? catsIncome : catsExpense;
+    const labelHint =
+      (typeof d.resolved_category_label === 'string' && d.resolved_category_label.trim()) ||
+      (typeof d.category_label === 'string' && d.category_label.trim()) ||
+      '';
+    let row: CategoryRow;
+    if (typeof d.category_id === 'string' && cats.some((c) => c.id === d.category_id)) {
+      row = cats.find((c) => c.id === d.category_id)!;
+    } else {
+      row = matchCategoryRowByHint(labelHint, kind as TransactionKind, catsExpense, catsIncome);
+    }
+    const dateStr = typeof d.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : ymd;
+    let amount: number | null = null;
+    if (d.amount != null && typeof d.amount === 'number' && Number.isFinite(d.amount) && d.amount > 0) {
+      amount = d.amount;
+    }
     return {
       kind,
       title: d.title,
-      amount: d.amount,
-      category_label: d.category_label,
-      date: d.date,
-      note: d.note ?? null,
+      amount,
+      dateYmd: dateStr,
       category_id: row.id,
-      occurred_at: localMidnightIsoFromYmd(d.date),
       resolved_category_label: row.label,
+      note: d.note ?? null,
+      occurred_at: localMidnightIsoFromYmd(dateStr),
     };
   });
+}
+
+function chatTurnsToPersisted(msgs: ChatTurn[]): PersistedChatTurn[] {
+  return msgs.map((m) => ({
+    id: m.id,
+    role: m.role,
+    text: m.text,
+    drafts: m.drafts?.map(
+      (d): PersistedChatDraft => ({
+        kind: d.kind,
+        title: d.title,
+        amount: d.amount,
+        date: d.dateYmd,
+        note: d.note,
+        category_id: d.category_id,
+        occurred_at: d.occurred_at,
+        resolved_category_label: d.resolved_category_label,
+      }),
+    ),
+  }));
 }
 
 export type TxnChatShellProps = {
@@ -111,11 +206,8 @@ export type TxnChatShellProps = {
 };
 
 export type TxnChatScreenProps = TxnChatShellProps & {
-  /** Full-page (own header + back) vs embedded under add flow */
   layout?: 'page' | 'embedded';
-  /** After successful batch save; default is navigate home (page only). */
   onTransactionsSaved?: () => void;
-  /** Fires when a send or batch save is in flight (for disabling parent chrome). */
   onActivityChange?: (busy: boolean) => void;
 };
 
@@ -127,11 +219,16 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
   const restoreAttempted = useRef(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatTurn[]>([]);
+  const [draftEdits, setDraftEdits] = useState<Record<string, DraftEdit>>({});
   const [chatHydrated, setChatHydrated] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? '';
+
+  const updateDraftEdit = useCallback((key: string, patch: DraftEdit) => {
+    setDraftEdits((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+  }, []);
 
   useEffect(() => {
     if (restoreAttempted.current) return;
@@ -154,7 +251,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
 
   useEffect(() => {
     if (!chatHydrated) return;
-    writePersistedAiChat({ v: 1, messages, input });
+    writePersistedAiChat({ v: 1, messages: chatTurnsToPersisted(messages), input });
   }, [chatHydrated, messages, input]);
 
   const busy = Boolean(sending || savingId);
@@ -223,7 +320,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
       });
       const drafts =
         result.transactions.length > 0
-          ? resolveDrafts(result.transactions, props.catsExpense, props.catsIncome)
+          ? buildChatDrafts(result.transactions, props.catsExpense, props.catsIncome)
           : undefined;
       setMessages((prev) => [
         ...prev,
@@ -242,24 +339,29 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
     } finally {
       setSending(false);
     }
-  }, [
-    apiKey,
-    input,
-    sending,
-    messages,
-    props,
-  ]);
+  }, [apiKey, input, sending, messages, props]);
 
   const saveDrafts = useCallback(
-    async (turnId: string, drafts: ResolvedDraft[]) => {
+    async (turnId: string, drafts: ChatDraftRow[]) => {
       if (drafts.length === 0 || savingId) return;
+      const merged = drafts.map((d, i) => mergeChatDraft(d, draftEdits[`${turnId}:${i}`]));
+      const missing = merged.some((d) => d.amount == null || !(d.amount > 0));
+      if (missing) {
+        props.setToast({
+          id: Date.now(),
+          kind: 'error',
+          message: 'Enter a positive amount for each item before saving.',
+        });
+        setTimeout(() => props.setToast(null), 3600);
+        return;
+      }
       setSavingId(turnId);
       try {
-        for (const d of drafts) {
+        for (const d of merged) {
           const res = await props.addTransaction({
             kind: d.kind,
             category_id: d.category_id,
-            amount: d.amount,
+            amount: d.amount!,
             title: d.title,
             note: d.note?.trim() || null,
             occurred_at: d.occurred_at,
@@ -268,13 +370,14 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
         }
         props.setToast({
           id: Date.now(),
-          kind: drafts.every((x) => x.kind === 'income') ? 'income' : 'expense',
-          amount: drafts.reduce((s, x) => s + x.amount, 0),
+          kind: merged.every((x) => x.kind === 'income') ? 'income' : 'expense',
+          amount: merged.reduce((s, x) => s + (x.amount ?? 0), 0),
         });
         setTimeout(() => props.setToast(null), 2400);
         clearPersistedAiChat();
         setMessages([]);
         setInput('');
+        setDraftEdits({});
         finishSave();
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Could not save';
@@ -284,7 +387,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
         setSavingId(null);
       }
     },
-    [finishSave, props, savingId],
+    [draftEdits, finishSave, props, savingId],
   );
 
   const cur = currencyPrefix(props.currency);
@@ -320,7 +423,8 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
       <div ref={scrollRef} className="txn-chat-scroll">
         {messages.length === 0 && !sending ? (
           <div className="txn-chat-hint" style={{ paddingTop: 24 }}>
-            Examples: “Coffee 120 today”, “Salary 45000 on the 1st”, “Spent 80 on bus and 200 on groceries yesterday”
+            Examples: “eat 5 apples” (I’ll ask how much it cost), “Coffee 120 today”, “Salary 45000 on the 1st”, “Spent 80 on bus
+            and 200 on groceries yesterday”
           </div>
         ) : null}
         {messages.map((m) => (
@@ -334,38 +438,124 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
             <div className={`txn-chat-bubble txn-chat-bubble--${m.role === 'user' ? 'user' : 'assistant'}`}>{m.text}</div>
             {m.role === 'assistant' && m.drafts && m.drafts.length > 0 ? (
               <div className="txn-chat-draft-wrap">
-                {m.drafts.map((d, i) => (
-                  <div key={`${m.id}-d-${i}`} className="txn-chat-draft">
-                    <div className="txn-chat-draft-title">
-                      {d.title} · {cur}
-                      {d.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                {(() => {
+                  const mergedAll = m.drafts!.map((d, i) => mergeChatDraft(d, draftEdits[`${m.id}:${i}`]));
+                  const allIncome = mergedAll.every((x) => x.kind === 'income');
+                  const allReady = mergedAll.every((x) => x.amount != null && x.amount > 0);
+                  return (
+                    <>
+                      {m.drafts!.map((d, i) => {
+                  const key = `${m.id}:${i}`;
+                  const display = mergeChatDraft(d, draftEdits[key]);
+                  const catOptions = display.kind === 'income' ? props.catsIncome : props.catsExpense;
+                  return (
+                    <div key={key} className="txn-chat-draft txn-chat-draft--editable">
+                      <div className="txn-chat-draft-title">{display.title}</div>
+                      {display.note ? (
+                        <div className="txn-chat-draft-note" style={{ color: '#6B6B80', fontSize: 12 }}>
+                          {display.note}
+                        </div>
+                      ) : null}
+                      <div className="txn-chat-draft-fields">
+                        <label className="txn-chat-draft-field">
+                          <span className="txn-chat-draft-label">Amount ({cur})</span>
+                          <input
+                            className="txn-chat-draft-input"
+                            type="number"
+                            inputMode="decimal"
+                            min={0}
+                            step="0.01"
+                            placeholder="Required"
+                            value={display.amount == null ? '' : String(display.amount)}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === '') updateDraftEdit(key, { amount: null });
+                              else {
+                                const n = Number(v);
+                                updateDraftEdit(key, {
+                                  amount: Number.isFinite(n) && n > 0 ? n : null,
+                                });
+                              }
+                            }}
+                          />
+                        </label>
+                        <label className="txn-chat-draft-field">
+                          <span className="txn-chat-draft-label">Date</span>
+                          <input
+                            className="txn-chat-draft-input"
+                            type="date"
+                            value={display.dateYmd}
+                            onChange={(e) => {
+                              const y = e.target.value;
+                              if (/^\d{4}-\d{2}-\d{2}$/.test(y)) updateDraftEdit(key, { dateYmd: y });
+                            }}
+                          />
+                        </label>
+                        <label className="txn-chat-draft-field">
+                          <span className="txn-chat-draft-label">Type</span>
+                          <select
+                            className="txn-chat-draft-input txn-chat-draft-select"
+                            value={display.kind}
+                            onChange={(e) => {
+                              const nk = e.target.value === 'income' ? 'income' : 'expense';
+                              const row = matchCategoryRowByHint('', nk, props.catsExpense, props.catsIncome);
+                              updateDraftEdit(key, {
+                                kind: nk,
+                                category_id: row.id,
+                                resolved_category_label: row.label,
+                              });
+                            }}
+                          >
+                            <option value="expense">Expense</option>
+                            <option value="income">Income</option>
+                          </select>
+                        </label>
+                        <label className="txn-chat-draft-field txn-chat-draft-field--wide">
+                          <span className="txn-chat-draft-label">Category</span>
+                          <select
+                            className="txn-chat-draft-input txn-chat-draft-select"
+                            value={display.category_id}
+                            onChange={(e) => {
+                              const id = e.target.value;
+                              const cat = catOptions.find((c) => c.id === id);
+                              if (!cat) return;
+                              updateDraftEdit(key, {
+                                category_id: cat.id,
+                                resolved_category_label: cat.label,
+                              });
+                            }}
+                          >
+                            {catOptions.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
                     </div>
-                    <div className="txn-chat-draft-meta">
-                      <span style={{ textTransform: 'capitalize' }}>{d.kind}</span>
-                      <span>{d.resolved_category_label}</span>
-                      <span>{d.date}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div className="txn-chat-save-row">
                   <button
                     type="button"
                     className="txn-chat-save"
-                    disabled={Boolean(savingId) || sending}
+                    disabled={Boolean(savingId) || sending || !allReady}
                     onClick={() => void saveDrafts(m.id, m.drafts!)}
                     style={{
-                      background: m.drafts.every((d) => d.kind === 'income') ? '#22A06B' : '#0F0F12',
+                      background: allIncome ? '#22A06B' : '#0F0F12',
                       boxShadow:
                         savingId === m.id || sending
                           ? 'none'
-                          : `0 10px 24px -8px ${
-                              m.drafts.every((d) => d.kind === 'income') ? '#22A06B99' : '#0F0F1299'
-                            }`,
+                          : `0 10px 24px -8px ${allIncome ? '#22A06B99' : '#0F0F1299'}`,
                     }}
                   >
-                    {savingId === m.id ? 'Saving…' : `Save ${m.drafts.length} to ledger`}
+                    {savingId === m.id ? 'Saving…' : `Save ${m.drafts!.length} to ledger`}
                   </button>
                 </div>
+                    </>
+                  );
+                })()}
               </div>
             ) : null}
           </motion.div>

@@ -50,8 +50,8 @@ export function writePersistedAddTxnKind(kind: PersistedAddTxnKind): void {
 export type PersistedChatDraft = {
   kind: 'expense' | 'income';
   title: string;
-  amount: number;
-  category_label: string;
+  /** null = user still needs to enter amount in AI chat */
+  amount: number | null;
   date: string;
   note?: string | null;
   category_id: string;

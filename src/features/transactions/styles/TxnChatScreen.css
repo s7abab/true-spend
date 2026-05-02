@@ -83,6 +83,59 @@
   letter-spacing: -0.2px;
 }
 
+.txn-chat-draft--editable {
+  gap: 8px;
+}
+
+.txn-chat-draft-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+  margin-top: 4px;
+}
+
+.txn-chat-draft-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.txn-chat-draft-field--wide {
+  grid-column: 1 / -1;
+}
+
+.txn-chat-draft-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9B9BA8;
+}
+
+.txn-chat-draft-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #E8E8EF;
+  font-size: 14px;
+  font-family: inherit;
+  color: #0F0F12;
+  background: #FAFAFB;
+}
+
+.txn-chat-draft-input:focus {
+  outline: none;
+  border-color: #c8c8d4;
+  background: #fff;
+}
+
+.txn-chat-draft-select {
+  cursor: pointer;
+}
+
 .txn-chat-footer {
   flex-shrink: 0;
   padding: 10px 16px;

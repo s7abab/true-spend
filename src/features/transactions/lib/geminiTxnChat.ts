@@ -14,9 +14,11 @@ function toYmd(d: Date): string {
 export type GeminiDraftTransaction = {
   kind: 'expense' | 'income';
   title: string;
-  amount: number;
-  category_label: string;
-  date: string;
+  /** Omitted or null when the user did not give an amount yet — ask, then fill on a follow-up. */
+  amount?: number | null;
+  category_label?: string | null;
+  /** YYYY-MM-DD; omit or null → app defaults to today. */
+  date?: string | null;
   note?: string | null;
 };
 
@@ -30,7 +32,8 @@ const RESPONSE_JSON_SCHEMA = {
   properties: {
     reply: {
       type: 'string',
-      description: 'Short friendly message; summarize parsed transactions or ask a clarifying question.',
+      description:
+        'Short friendly message. If amount is missing, ask one clear question (e.g. how much?). Otherwise summarize.',
     },
     transactions: {
       type: 'array',
@@ -39,12 +42,12 @@ const RESPONSE_JSON_SCHEMA = {
         properties: {
           kind: { type: 'string', enum: ['expense', 'income'] },
           title: { type: 'string' },
-          amount: { type: 'number' },
-          category_label: { type: 'string' },
-          date: { type: 'string', description: 'Calendar date YYYY-MM-DD' },
+          amount: { type: 'number', description: 'Positive number only if known; omit if unknown.' },
+          category_label: { type: 'string', description: 'Best match from list, or omit if unsure.' },
+          date: { type: 'string', description: 'YYYY-MM-DD or omit for today.' },
           note: { type: 'string' },
         },
-        required: ['kind', 'title', 'amount', 'category_label', 'date'],
+        required: ['kind', 'title'],
       },
     },
   },
@@ -72,11 +75,12 @@ ${inc}
 Rules:
 - Extract every separate transaction the user describes in one reply.
 - kind "expense" for spending, purchases, bills, fees. kind "income" for salary, freelance pay, refunds received, interest, gifts received, etc.
-- amount is always a positive number (no currency symbols in JSON).
-- date is always YYYY-MM-DD; resolve "today", "yesterday", weekdays relative to ${opts.todayYmd}.
-- category_label must be chosen from the list for that kind; pick the closest synonym if the user uses different wording.
+- amount: include a positive number only when the user gave a clear amount in money (not counts like "5 apples" unless they also gave a price). If they did not give a money amount, omit amount or set null and ask in reply what the amount was.
+- date: YYYY-MM-DD when you can infer it ("today", "yesterday", weekdays → relative to ${opts.todayYmd}). If not mentioned, omit date or null (the app will default to today).
+- category_label: pick from the list for that kind when possible; omit or null if unsure (the app will default to a category they can change).
 - title is a short human-readable label (a few words).
-- If the message is not about money or nothing can be parsed, return transactions: [] and reply explaining what you need (amount, what it was for, etc.).`;
+- If the message is not about money or nothing can be parsed, return transactions: [] and reply explaining what you need.
+- Follow-up messages: merge prior context; when the user only sends a number, treat it as the missing amount for the last open item when obvious.`;
 }
 
 function normalizeGeminiResult(raw: unknown): GeminiTxnChatResult {
@@ -92,13 +96,20 @@ function normalizeGeminiResult(raw: unknown): GeminiTxnChatResult {
     const r = row as Record<string, unknown>;
     const kind = r.kind === 'income' ? 'income' : 'expense';
     const title = typeof r.title === 'string' ? r.title.trim() : '';
-    const amount = typeof r.amount === 'number' ? r.amount : Number(r.amount);
-    const category_label = typeof r.category_label === 'string' ? r.category_label.trim() : '';
-    const date = typeof r.date === 'string' ? r.date.trim() : '';
-    const note = typeof r.note === 'string' ? r.note.trim() : null;
-    if (!title || !Number.isFinite(amount) || amount <= 0 || !category_label || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      continue;
+    if (!title) continue;
+    const rawAmt = r.amount;
+    let amount: number | null = null;
+    if (rawAmt != null && typeof rawAmt === 'number' && Number.isFinite(rawAmt) && rawAmt > 0) {
+      amount = rawAmt;
+    } else if (rawAmt != null && typeof rawAmt === 'string' && rawAmt.trim()) {
+      const n = Number(rawAmt);
+      if (Number.isFinite(n) && n > 0) amount = n;
     }
+    const category_label =
+      typeof r.category_label === 'string' && r.category_label.trim() ? r.category_label.trim() : null;
+    const dateRaw = typeof r.date === 'string' ? r.date.trim() : '';
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : null;
+    const note = typeof r.note === 'string' ? r.note.trim() : null;
     out.push({ kind, title, amount, category_label, date, note: note || null });
   }
   return { reply, transactions: out };
