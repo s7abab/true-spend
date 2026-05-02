@@ -422,10 +422,18 @@
   pointer-events: none;
 }
 
+/* Cap height so tall imports (many columns / long copy) stay reachable above the composer.
+   Parent .txn-chat-page is overflow:hidden and footer-stack does not shrink, so without this
+   the panel was clipped with no scroll surface. */
 .txn-chat-import-panel-wrap {
   padding: 8px 16px 0;
   max-width: 100%;
+  min-height: 0;
   box-sizing: border-box;
+  max-height: min(70dvh, calc(100dvh - 168px));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .txn-chat-composer {
@@ -815,15 +823,22 @@
 .txn-chat-save {
   flex: 1;
   min-width: 140px;
-  height: 44px;
+  min-height: 44px;
+  padding: 10px 14px;
   border-radius: 12px;
   border: none;
-  background: #0F0F12;
+  background: #0f0f12;
   color: #fff;
   font-size: 14px;
   font-weight: 700;
+  line-height: 1.25;
   cursor: pointer;
   font-family: inherit;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .txn-chat-save:disabled {
