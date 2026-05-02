@@ -21,8 +21,34 @@ import {
   writePersistedAiChat,
   clearPersistedAiChat,
 } from '@/features/transactions/lib/txnUiLocalStorage';
-import { TxnChatImportBar } from '@/features/transactions/components/TxnChatImportBar';
+import { TxnChatImportBar, type TxnChatImportBarHandle } from '@/features/transactions/components/TxnChatImportBar';
 import '@/features/transactions/styles/TxnChatScreen.css';
+
+type ChatStarter =
+  | { id: string; label: string; kind: 'file' }
+  | { id: string; label: string; kind: 'text'; value: string };
+
+const CHAT_STARTERS: ChatStarter[] = [
+  { id: 'import', label: 'Import CSV, Excel, or PDF', kind: 'file' },
+  {
+    id: 'day',
+    label: "Log today's purchases",
+    kind: 'text',
+    value: 'Coffee 120, lunch 220, groceries 450 today',
+  },
+  {
+    id: 'in',
+    label: 'Record income',
+    kind: 'text',
+    value: 'Salary credited 45000 on the 1st',
+  },
+  {
+    id: 'xfer',
+    label: 'Log a transfer (SIP, EMI, card bill...)',
+    kind: 'text',
+    value: 'SIP 5000, paid credit card bill 12000',
+  },
+];
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -277,6 +303,8 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
   const onTransactionsSaved = props.onTransactionsSaved;
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const importBarRef = useRef<TxnChatImportBarHandle>(null);
   const restoreAttempted = useRef(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatTurn[]>([]);
@@ -285,6 +313,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
   const [sending, setSending] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [importBusy, setImportBusy] = useState(false);
+  const [importPanelOpen, setImportPanelOpen] = useState(false);
 
   const txnAi = useMemo(() => resolveTxnChatFromEnv(), []);
 
@@ -513,10 +542,8 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
       <div ref={scrollRef} className="txn-chat-scroll">
         {messages.length === 0 && !sending ? (
           <div className="txn-chat-hint" style={{ paddingTop: 24 }}>
-            Include amounts in {cur} when you can — e.g. “Coffee 120 today”, “80 bus + 200 groceries yesterday”. If you
-            list several things and only some have prices, you will get a card per line and can type the missing amounts
-            before saving. Use Import file below for CSV, Excel, or PDF — one quick column map, then confirm to add
-            rows as editable cards.
+            Type below or tap a starter. Include amounts in {cur} when you can — e.g. “Coffee 120 today”. Use + to
+            attach CSV, Excel, or PDF for column mapping and import.
           </div>
         ) : null}
         {messages.map((m) => (
@@ -755,11 +782,13 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
       <div className="txn-chat-footer-stack">
         {txnAi.ok ? (
           <TxnChatImportBar
+            ref={importBarRef}
             provider={txnAi.provider}
             currency={props.currency}
             disabled={busy}
             canOpenAdd={props.canOpenAdd}
             onBusy={setImportBusy}
+            onPanelOpenChange={setImportPanelOpen}
             setToast={props.setToast}
             onImported={({ fileName, reply, transactions }) => {
               const txsForDrafts = filterTxnChatRowsForDraftUi(transactions);
@@ -777,30 +806,92 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
             }}
           />
         ) : null}
-        <div className="txn-chat-footer">
-          <textarea
-            className="txn-chat-input"
-            rows={1}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Message…"
-            disabled={sending || Boolean(savingId) || importBusy}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                void send();
-              }
-            }}
-          />
-          <button
-            type="button"
-            className="txn-chat-send"
-            disabled={sending || !input.trim() || Boolean(savingId) || importBusy}
-            onClick={() => void send()}
-          >
-            Send
-          </button>
-        </div>
+        {txnAi.ok ? (
+          <div className="txn-chat-composer">
+            {messages.length === 0 && !sending && !importBusy && !importPanelOpen ? (
+              <div className="txn-chat-starters" aria-label="Suggested prompts">
+                {CHAT_STARTERS.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className="txn-chat-starter"
+                    disabled={busy}
+                    onClick={() => {
+                      if (s.kind === 'file') {
+                        importBarRef.current?.openFilePicker();
+                        return;
+                      }
+                      setInput(s.value);
+                      queueMicrotask(() => textareaRef.current?.focus());
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <div className="txn-chat-footer txn-chat-footer--composer">
+              <button
+                type="button"
+                className="txn-chat-attach"
+                aria-label="Attach CSV, Excel, or PDF"
+                disabled={busy}
+                onClick={() => importBarRef.current?.openFilePicker()}
+              >
+                +
+              </button>
+              <textarea
+                ref={textareaRef}
+                className="txn-chat-input txn-chat-input--composer"
+                rows={1}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask anything…"
+                disabled={sending || Boolean(savingId) || importBusy}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void send();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="txn-chat-send"
+                disabled={sending || !input.trim() || Boolean(savingId) || importBusy}
+                onClick={() => void send()}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="txn-chat-footer">
+            <textarea
+              ref={textareaRef}
+              className="txn-chat-input"
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Message…"
+              disabled={sending || Boolean(savingId) || importBusy}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="txn-chat-send"
+              disabled={sending || !input.trim() || Boolean(savingId) || importBusy}
+              onClick={() => void send()}
+            >
+              Send
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

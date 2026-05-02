@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { TxnChatProvider } from '@/features/transactions/lib/txn-chat/providers/types';
 import type {
   ImportColumnMapping,
@@ -20,12 +20,18 @@ const MAP_KEYS: { key: keyof ImportColumnMapping; label: string }[] = [
   { key: 'category_hint', label: 'Category hint (optional)' },
 ];
 
+export type TxnChatImportBarHandle = {
+  openFilePicker: () => void;
+};
+
 export type TxnChatImportBarProps = {
   provider: TxnChatProvider;
   currency: string;
   disabled: boolean;
   canOpenAdd: boolean;
   onBusy: (busy: boolean) => void;
+  /** Fires when the import sheet opens or fully closes (after Cancel / done). */
+  onPanelOpenChange?: (open: boolean) => void;
   setToast: (t: ToastPayload | null) => void;
   onImported: (payload: {
     fileName: string;
@@ -36,7 +42,10 @@ export type TxnChatImportBarProps = {
 
 type Phase = 'idle' | 'work' | 'password' | 'ready';
 
-export function TxnChatImportBar(props: TxnChatImportBarProps) {
+export const TxnChatImportBar = forwardRef<TxnChatImportBarHandle, TxnChatImportBarProps>(function TxnChatImportBar(
+  props,
+  ref,
+) {
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingFileRef = useRef<File | null>(null);
   const [open, setOpen] = useState(false);
@@ -49,6 +58,18 @@ export function TxnChatImportBar(props: TxnChatImportBarProps) {
   const [err, setErr] = useState<string | null>(null);
   const [passwordDraft, setPasswordDraft] = useState('');
   const [allowPasswordTry, setAllowPasswordTry] = useState(true);
+
+  useImperativeHandle(ref, () => ({
+    openFilePicker: () => {
+      if (props.disabled) return;
+      inputRef.current?.click();
+    },
+  }));
+
+  const onPanelOpenChange = props.onPanelOpenChange;
+  useEffect(() => {
+    onPanelOpenChange?.(open);
+  }, [open, onPanelOpenChange]);
 
   const reset = useCallback(() => {
     setOpen(false);
@@ -172,7 +193,7 @@ export function TxnChatImportBar(props: TxnChatImportBarProps) {
   const headerOpts = table?.headers ?? [];
 
   return (
-    <div className="txn-chat-import">
+    <>
       <input
         ref={inputRef}
         type="file"
@@ -182,146 +203,141 @@ export function TxnChatImportBar(props: TxnChatImportBarProps) {
         tabIndex={-1}
         onChange={onFile}
       />
-      {!open ? (
-        <button
-          type="button"
-          className="txn-chat-import-trigger"
-          disabled={props.disabled}
-          onClick={() => inputRef.current?.click()}
-        >
-          Import file…
-        </button>
-      ) : (
-        <div className="txn-chat-import-panel">
-          <div className="txn-chat-import-head">
-            <span className="txn-chat-import-title">{fileName}</span>
-            <button
-              type="button"
-              className="txn-chat-import-dismiss"
-              disabled={props.disabled || phase === 'work'}
-              onClick={() => reset()}
-            >
-              Cancel
-            </button>
-          </div>
-          {phase === 'work' ? <div className="txn-chat-import-status">Reading file and mapping columns…</div> : null}
-          {phase === 'password' && err ? (
-            <div className="txn-chat-import-password">
-              <div className="txn-chat-import-password-msg">{err}</div>
-              {allowPasswordTry ? (
-                <div className="txn-chat-import-password-row">
-                  <label className="txn-chat-import-password-label" htmlFor="txn-import-pw">
-                    File password
-                  </label>
-                  <input
-                    id="txn-import-pw"
-                    type="password"
-                    className="txn-chat-import-password-input"
-                    autoComplete="off"
-                    disabled={props.disabled || phase === 'work'}
-                    value={passwordDraft}
-                    onChange={(e) => setPasswordDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        tryPassword();
-                      }
-                    }}
-                    placeholder="Enter password"
-                  />
-                  <button
-                    type="button"
-                    className="txn-chat-import-password-submit"
-                    disabled={props.disabled || phase === 'work'}
-                    onClick={() => tryPassword()}
-                  >
-                    Unlock and continue
-                  </button>
-                </div>
-              ) : (
-                <p className="txn-chat-import-unlock-only">
-                  Remove protection in Excel or your PDF app, save a copy, then choose Import file again.
-                </p>
-              )}
+      {open ? (
+        <div className="txn-chat-import-panel-wrap">
+          <div className="txn-chat-import-panel">
+            <div className="txn-chat-import-head">
+              <span className="txn-chat-import-title">{fileName}</span>
+              <button
+                type="button"
+                className="txn-chat-import-dismiss"
+                disabled={props.disabled || phase === 'work'}
+                onClick={() => reset()}
+              >
+                Cancel
+              </button>
             </div>
-          ) : null}
-          {err && phase !== 'password' ? <div className="txn-chat-import-error">{err}</div> : null}
-          {phase === 'ready' && table && mapping ? (
-            <>
-              {aiReply ? <p className="txn-chat-import-ai">{aiReply}</p> : null}
-              <div className="txn-chat-import-grid">
-                {MAP_KEYS.map(({ key, label }) => (
-                  <label key={key} className="txn-chat-import-field">
-                    <span>{label}</span>
+            {phase === 'work' ? (
+              <div className="txn-chat-import-status">Reading file and mapping columns…</div>
+            ) : null}
+            {phase === 'password' && err ? (
+              <div className="txn-chat-import-password">
+                <div className="txn-chat-import-password-msg">{err}</div>
+                {allowPasswordTry ? (
+                  <div className="txn-chat-import-password-row">
+                    <label className="txn-chat-import-password-label" htmlFor="txn-import-pw">
+                      File password
+                    </label>
+                    <input
+                      id="txn-import-pw"
+                      type="password"
+                      className="txn-chat-import-password-input"
+                      autoComplete="off"
+                      disabled={props.disabled}
+                      value={passwordDraft}
+                      onChange={(e) => setPasswordDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          tryPassword();
+                        }
+                      }}
+                      placeholder="Enter password"
+                    />
+                    <button
+                      type="button"
+                      className="txn-chat-import-password-submit"
+                      disabled={props.disabled}
+                      onClick={() => tryPassword()}
+                    >
+                      Unlock and continue
+                    </button>
+                  </div>
+                ) : (
+                  <p className="txn-chat-import-unlock-only">
+                    Remove protection in Excel or your PDF app, save a copy, then use the + button to attach again.
+                  </p>
+                )}
+              </div>
+            ) : null}
+            {err && phase !== 'password' ? <div className="txn-chat-import-error">{err}</div> : null}
+            {phase === 'ready' && table && mapping ? (
+              <>
+                {aiReply ? <p className="txn-chat-import-ai">{aiReply}</p> : null}
+                <div className="txn-chat-import-grid">
+                  {MAP_KEYS.map(({ key, label }) => (
+                    <label key={key} className="txn-chat-import-field">
+                      <span>{label}</span>
+                      <select
+                        className="txn-chat-import-select"
+                        disabled={props.disabled}
+                        value={mapping[key] ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setMapping((prev) =>
+                            prev ? { ...prev, [key]: v === '' ? null : v } : prev,
+                          );
+                        }}
+                      >
+                        <option value="">—</option>
+                        {headerOpts.map((h, hi) => (
+                          <option key={`${String(key)}-${hi}`} value={h}>
+                            {h}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                  <label className="txn-chat-import-field">
+                    <span>Default type</span>
                     <select
                       className="txn-chat-import-select"
                       disabled={props.disabled}
-                      value={mapping[key] ?? ''}
+                      value={defaultKind}
                       onChange={(e) => {
                         const v = e.target.value;
-                        setMapping((prev) =>
-                          prev ? { ...prev, [key]: v === '' ? null : v } : prev,
-                        );
+                        if (v === 'income' || v === 'transfer' || v === 'expense') setDefaultKind(v);
                       }}
                     >
-                      <option value="">—</option>
-                      {headerOpts.map((h, hi) => (
-                        <option key={`${String(key)}-${hi}`} value={h}>
-                          {h}
-                        </option>
-                      ))}
+                      <option value="expense">Expense</option>
+                      <option value="income">Income</option>
+                      <option value="transfer">Transfer</option>
                     </select>
                   </label>
-                ))}
-                <label className="txn-chat-import-field">
-                  <span>Default type</span>
-                  <select
-                    className="txn-chat-import-select"
-                    disabled={props.disabled}
-                    value={defaultKind}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === 'income' || v === 'transfer' || v === 'expense') setDefaultKind(v);
-                    }}
-                  >
-                    <option value="expense">Expense</option>
-                    <option value="income">Income</option>
-                    <option value="transfer">Transfer</option>
-                  </select>
-                </label>
-              </div>
-              <div className="txn-chat-import-preview">
-                <div className="txn-chat-import-preview-label">Preview</div>
-                <div className="txn-chat-import-table-wrap">
-                  <table className="txn-chat-import-table">
-                    <thead>
-                      <tr>
-                        {table.headers.map((h, hi) => (
-                          <th key={hi}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {preview.map((row, ri) => (
-                        <tr key={ri}>
-                          {table.headers.map((_, ci) => (
-                            <td key={`${ri}-${ci}`}>{row[ci] ?? ''}</td>
+                </div>
+                <div className="txn-chat-import-preview">
+                  <div className="txn-chat-import-preview-label">Preview</div>
+                  <div className="txn-chat-import-table-wrap">
+                    <table className="txn-chat-import-table">
+                      <thead>
+                        <tr>
+                          {table.headers.map((h, hi) => (
+                            <th key={hi}>{h}</th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {preview.map((row, ri) => (
+                          <tr key={ri}>
+                            {table.headers.map((_, ci) => (
+                              <td key={`${ri}-${ci}`}>{row[ci] ?? ''}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-              <div className="txn-chat-import-actions">
-                <button type="button" className="txn-chat-import-confirm" disabled={props.disabled} onClick={confirm}>
-                  Add to chat
-                </button>
-              </div>
-            </>
-          ) : null}
+                <div className="txn-chat-import-actions">
+                  <button type="button" className="txn-chat-import-confirm" disabled={props.disabled} onClick={confirm}>
+                    Add to chat
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
         </div>
-      )}
-    </div>
+      ) : null}
+    </>
   );
-}
+});
