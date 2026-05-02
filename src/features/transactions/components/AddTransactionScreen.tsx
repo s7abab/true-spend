@@ -280,7 +280,7 @@ export function AddTransactionScreen({
         </label>
       </div>
 
-      <div className="cat-strip" style={{ borderBottom: '1px solid #F5F5F8' }}>
+      <div className="cat-strip" data-swipe-back-off style={{ borderBottom: '1px solid #F5F5F8' }}>
         {cats.map((c) => {
           const active = c.id === catId;
           const IconCmp = ICON_MAP[c.icon] || ICON_MAP.dots;

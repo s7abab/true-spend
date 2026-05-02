@@ -77,6 +77,16 @@ export async function listRecentTransactions(userId: string, limit = 5, opts: { 
   return withSignal(q, opts.signal);
 }
 
+export async function fetchTransactionById(userId: string, id: string, opts: { signal?: AbortSignal } = {}) {
+  const q = supabase
+    .from('transactions')
+    .select('id, kind, category_id, amount, title, note, occurred_at')
+    .eq('user_id', userId)
+    .eq('id', id)
+    .maybeSingle();
+  return withSignal(q, opts.signal);
+}
+
 export type TxnPageCursor = { occurred_at: string; id: string } | null;
 
 export type FetchTransactionsPageOpts = {

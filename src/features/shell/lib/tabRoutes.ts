@@ -6,7 +6,7 @@ const PATH_TO_TAB: Record<string, TabId> = {
   '/stats': 'stats',
   '/history': 'history',
   '/profile': 'profile',
-  '/categories': 'categories',
+  '/profile/categories': 'profile',
 };
 
 const TAB_TO_PATH: Record<TabId, string> = {
@@ -14,7 +14,6 @@ const TAB_TO_PATH: Record<TabId, string> = {
   stats: '/stats',
   history: '/history',
   profile: '/profile',
-  categories: '/categories',
 };
 
 function normalizePathname(pathname: string): string {
@@ -22,17 +21,20 @@ function normalizePathname(pathname: string): string {
   return pathname;
 }
 
-/** Map current URL path to a tab; unknown paths fall back to home. */
+/** Map current URL path to a primary tab (profile covers /profile/categories). */
 export function tabFromPathname(pathname: string): TabId {
-  return PATH_TO_TAB[normalizePathname(pathname)] ?? 'home';
+  const n = normalizePathname(pathname);
+  return PATH_TO_TAB[n] ?? 'home';
 }
 
-/** Canonical path for a tab (used in history and links). */
+/** Canonical path for a primary tab. */
 export function pathnameForTab(tab: TabId): string {
   return TAB_TO_PATH[tab];
 }
 
-/** True when pathname is not the canonical path for its resolved tab (e.g. `/home` vs `/`). */
+/** True when pathname should be replaced with the canonical tab URL (e.g. `/home` → `/`). */
 export function shouldReplacePathname(pathname: string, tab: TabId): boolean {
-  return normalizePathname(pathname) !== pathnameForTab(tab);
+  const n = normalizePathname(pathname);
+  if (n.startsWith('/profile/')) return false;
+  return n !== pathnameForTab(tab);
 }

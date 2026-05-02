@@ -56,9 +56,11 @@
   padding: 0;
   transition: background 120ms, color 120ms, opacity 120ms;
 }
-.categories-row__reorder-btn:hover:not(:disabled) {
-  background: #e8e8ef;
-  color: #0f0f12;
+@media (hover: hover) {
+  .categories-row__reorder-btn:hover:not(:disabled) {
+    background: #e8e8ef;
+    color: #0f0f12;
+  }
 }
 .categories-row__reorder-btn:active:not(:disabled) {
   transform: scale(0.96);
@@ -102,8 +104,10 @@
 .categories-row__btn--edit {
   color: var(--cat-accent, #0f0f12);
 }
-.categories-row__btn--edit:hover {
-  background: rgba(15, 15, 18, 0.06);
+@media (hover: hover) {
+  .categories-row__btn--edit:hover {
+    background: rgba(15, 15, 18, 0.06);
+  }
 }
 .categories-row__btn--delete {
   color: #acacb8;
@@ -111,9 +115,11 @@
   line-height: 1;
   padding: 6px 10px;
 }
-.categories-row__btn--delete:hover {
-  background: #fff0f2;
-  color: #ff4d6d;
+@media (hover: hover) {
+  .categories-row__btn--delete:hover {
+    background: #fff0f2;
+    color: #ff4d6d;
+  }
 }
 
 .categories-edit {

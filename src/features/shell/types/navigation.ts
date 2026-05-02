@@ -1,1 +1,1 @@
-export type TabId = 'home' | 'stats' | 'history' | 'categories' | 'profile';
+export type TabId = 'home' | 'stats' | 'history' | 'profile';

@@ -29,7 +29,7 @@ export function AppTopBar({ children, onProfile, profile, user }: AppTopBarProps
   );
 
   return (
-    <div className="app-top-bar screen-header" style={{ display: 'flex', gap: 12, padding: '10px 16px 12px' }}>
+    <div className="app-top-bar screen-header" style={{ display: 'flex', gap: 12 }}>
       <div className="app-top-bar__title">{children}</div>
       <div className="app-top-bar__profile">
         <button
@@ -37,8 +37,8 @@ export function AppTopBar({ children, onProfile, profile, user }: AppTopBarProps
           onClick={onProfile}
           aria-label="Profile"
           style={{
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             borderRadius: 999,
             border: 'none',
             padding: 0,
@@ -60,7 +60,11 @@ export function AppTopBar({ children, onProfile, profile, user }: AppTopBarProps
               src={avatarUrl}
               alt=""
               referrerPolicy="no-referrer"
-              style={{ width: 40, height: 40, objectFit: 'cover', display: 'block' }}
+              loading="lazy"
+              decoding="async"
+              width={44}
+              height={44}
+              style={{ width: 40, height: 40, objectFit: 'cover', display: 'block', borderRadius: 999 }}
             />
           ) : (
             initials

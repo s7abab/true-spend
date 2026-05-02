@@ -16,6 +16,13 @@ import {
 import '@/features/history/styles/HistoryFilters.css';
 import { TxnListSkeletonGroup, LoadingSpinner } from '@/shared/components/loading';
 
+/** Same labels/order as Stats kind segment (All / Spent / Income). */
+const HISTORY_KIND_SEG = [
+  { id: 'all' as const, label: 'All' },
+  { id: 'expense' as const, label: 'Spent' },
+  { id: 'income' as const, label: 'Income' },
+] as const;
+
 export { TxnRow } from '@/shared/components/TxnRow';
 
 type ResolveCat = (id: string | null, kind: TransactionKind | string | undefined) => CategoryRow;
@@ -54,6 +61,7 @@ export function HistoryScreen({
   const { rows, loading, loadingMore, hasMore, error, loadMore } = useHistoryTransactions(fullQuery);
   const groups = useMemo(() => groupTxnsByDay(rows), [rows]);
   const filterDot = hasAdvancedHistoryFilters(listFilter);
+  const historyKindSegIdx = HISTORY_KIND_SEG.findIndex((k) => k.id === listFilter.kind);
 
   // Auto-load more when the sentinel scrolls into view
   useEffect(() => {
@@ -98,19 +106,23 @@ export function HistoryScreen({
         </button>
       </div>
 
-      <div className="history-chip-row">
-        {(
-          [
-            { id: 'all' as const, label: 'All' },
-            { id: 'expense' as const, label: 'Spent' },
-            { id: 'income' as const, label: 'Income' },
-          ] as const
-        ).map((f) => (
+      <div className="seg" style={{ margin: '14px 16px 0' }}>
+        <div
+          className={`seg-thumb${listFilter.kind === 'all' ? ' seg-thumb--slate' : listFilter.kind === 'expense' ? ' seg-thumb--rose' : ' seg-thumb--emerald'}`}
+          style={{
+            left: historyKindSegIdx === 0 ? 3 : `calc(${historyKindSegIdx * (100 / 3)}%)`,
+            width: 'calc(33.33% - 2px)',
+          }}
+        />
+        {HISTORY_KIND_SEG.map((f) => (
           <button
             key={f.id}
             type="button"
-            className={`chip ${listFilter.kind === f.id ? 'chip-active' : 'chip-idle'}`}
-            onClick={() => setListFilter((prev) => ({ ...prev, kind: f.id, categoryId: null, uncategorizedOnly: false }))}
+            className={`seg-btn${listFilter.kind === f.id ? ' active' : ''}`}
+            onClick={() =>
+              setListFilter((prev) => ({ ...prev, kind: f.id, categoryId: null, uncategorizedOnly: false }))
+            }
+            style={{ color: listFilter.kind === f.id ? '#0F0F12' : '#ACACB8' }}
           >
             {f.label}
           </button>

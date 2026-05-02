@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { IClose, ICON_MAP } from '@/shared/components/Icons';
@@ -138,8 +138,6 @@ export function HistoryFilterSheet({
     onClose();
   };
 
-  const thumbStyle = { '--seg-i': kindSegIndex(draft.kind) } as CSSProperties;
-
   const tree = (
     <AnimatePresence>
       {open ? (
@@ -179,13 +177,19 @@ export function HistoryFilterSheet({
 
               <div className="history-filter-section">
                 <div className="history-filter-section__label">TYPE</div>
-                <div className="history-filter-kind-seg">
-                  <span className="history-filter-kind-thumb" style={thumbStyle} />
+                <div className="seg" style={{ width: '100%' }}>
+                  <div
+                    className={`seg-thumb${draft.kind === 'all' ? ' seg-thumb--slate' : draft.kind === 'expense' ? ' seg-thumb--rose' : ' seg-thumb--emerald'}`}
+                    style={{
+                      left: kindSegIndex(draft.kind) === 0 ? 3 : `calc(${kindSegIndex(draft.kind) * (100 / 3)}%)`,
+                      width: 'calc(33.33% - 2px)',
+                    }}
+                  />
                   {(['all', 'expense', 'income'] as const).map((k) => (
                     <button
                       key={k}
                       type="button"
-                      className={`history-filter-kind-btn${draft.kind === k ? ' history-filter-kind-btn--active' : ''}`}
+                      className={`seg-btn${draft.kind === k ? ' active' : ''}`}
                       onClick={() =>
                         setDraft((d) => ({
                           ...d,
@@ -194,6 +198,7 @@ export function HistoryFilterSheet({
                           uncategorizedOnly: false,
                         }))
                       }
+                      style={{ color: draft.kind === k ? '#0F0F12' : '#ACACB8' }}
                     >
                       {k === 'all' ? 'All' : k === 'expense' ? 'Spent' : 'Income'}
                     </button>

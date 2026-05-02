@@ -1,62 +1,18 @@
-import { useState, useCallback, useEffect, type ComponentType } from 'react';
-import type { MappedTxn } from '@/utils/txnMap';
-import { AnimatePresence } from 'framer-motion';
-import { HomeScreen } from '@/features/transactions/components/HomeScreen';
-import { StatsScreen } from '@/features/stats/components/StatsScreen';
-import { HistoryScreen } from '@/features/history/components/HistoryScreen';
-import { ProfileScreen } from '@/features/profile/components/ProfileScreen';
-import { AddTransactionScreen } from '@/features/transactions/components/AddTransactionScreen';
-import { CategoriesScreen } from '@/features/categories/components/CategoriesScreen';
+import { useCallback, useState } from 'react';
 import { SignInScreen } from '@/features/auth/components/SignInScreen';
 import { AppBootLoading } from '@/shared/components/loading';
-import { AppTopBar } from '@/shared/components/AppTopBar';
 import { Toast, type ToastPayload } from '@/shared/components/Toast';
-import { DataErrorBanner } from '@/shared/components/DataErrorBanner';
 import { useAuth } from '@/features/auth/components/AuthContext';
 import { useProfile } from '@/features/profile/hooks/useProfile';
 import { useCategories } from '@/features/categories/hooks/useCategories';
 import { useTransactions } from '@/features/transactions/hooks/useTransactions';
-import { IHome, IChart, IList, IUser, IPlus, IChevLeft } from '@/shared/components/Icons';
-import type { ProfileRow } from '@/features/profile/types';
 import type { User } from '@supabase/supabase-js';
 import '@/features/shell/styles/App.css';
-import type { TabId } from '@/features/shell/types/navigation';
-import {
-  pathnameForTab,
-  shouldReplacePathname,
-  tabFromPathname,
-} from '@/features/shell/lib/tabRoutes';
+import { AnimatePresence } from 'framer-motion';
+import { ShellRoutes } from '@/features/shell/ShellRoutes';
+import { OfflineBanner } from '@/features/shell/components/OfflineBanner';
 
 const ACCENT = '#0F0F12';
-
-type TabDef = { id: TabId; label: string; Icon: ComponentType<{ size?: number; stroke?: number }> };
-
-// Categories is no longer a tab — it lives under Profile as a sub-screen
-const TABS: (TabDef | null)[] = [
-  { id: 'home', label: 'Home', Icon: IHome },
-  { id: 'stats', label: 'Stats', Icon: IChart },
-  null, // FAB
-  { id: 'history', label: 'History', Icon: IList },
-  { id: 'profile', label: 'Profile', Icon: IUser },
-];
-
-function firstName(profile: ProfileRow | null | undefined, user: User | null | undefined): string {
-  const full =
-    profile?.full_name
-    || (user?.user_metadata?.full_name as string | undefined)
-    || (user?.user_metadata?.name as string | undefined)
-    || '';
-  if (full) return full.split(/\s+/)[0] ?? 'there';
-  if (user?.email) return user.email.split('@')[0] ?? 'there';
-  return 'there';
-}
-
-function greetingLine(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-}
 
 export default function App() {
   const { session, user, loading: authLoading } = useAuth();
@@ -114,20 +70,7 @@ function AuthedApp({ user }: { user: User | null }) {
     (categoriesLoading && !categoriesError) ||
     (homeLoading && !txnsError);
 
-  const [tab, setTab] = useState<TabId>(() => {
-    if (typeof window === 'undefined') return 'home';
-    const path = window.location.pathname;
-    const t = tabFromPathname(path);
-    if (shouldReplacePathname(path, t)) {
-      window.history.replaceState(null, '', pathnameForTab(t));
-    }
-    return t;
-  });
-  const [adding, setAdding] = useState(false);
-  const [editingTxn, setEditingTxn] = useState<MappedTxn | null>(null);
   const [toast, setToast] = useState<ToastPayload | null>(null);
-  const [savingTxn, setSavingTxn] = useState(false);
-  const [deletingTxn, setDeletingTxn] = useState(false);
   const [retrying, setRetrying] = useState(false);
 
   const dataErrors = [profileError, categoriesError, txnsError].filter(Boolean) as string[];
@@ -144,349 +87,48 @@ function AuthedApp({ user }: { user: User | null }) {
     }
   }, [refetchProfile, refetchCategories, refetchTransactions]);
 
-  const navigateToTab = useCallback((next: TabId) => {
-    const nextPath = pathnameForTab(next);
-    if (window.location.pathname !== nextPath) {
-      window.history.pushState(null, '', nextPath);
-    }
-    setTab(next);
-  }, []);
-
-  useEffect(() => {
-    const onPopState = () => {
-      const path = window.location.pathname;
-      const t = tabFromPathname(path);
-      setTab(t);
-      if (shouldReplacePathname(path, t)) {
-        window.history.replaceState(null, '', pathnameForTab(t));
-      }
-    };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-
   const canOpenAdd =
     !categoriesLoading && !categoriesError && (catsExpense.length > 0 || catsIncome.length > 0);
-
-  const closeTxnSheet = () => {
-    if (!savingTxn && !deletingTxn) {
-      setAdding(false);
-      setEditingTxn(null);
-    }
-  };
-
-  const openEditTxn = useCallback(
-    (txn: MappedTxn) => {
-      if (!canOpenAdd) {
-        const msg = categoriesLoading
-          ? 'Still loading categories…'
-          : categoriesError
-            ? 'Fix the data connection, then try again.'
-            : 'Add at least one category first (Categories tab).';
-        setToast({ id: Date.now(), kind: 'error', message: msg });
-        setTimeout(() => setToast(null), 3200);
-        return;
-      }
-      setEditingTxn(txn);
-      setAdding(true);
-    },
-    [canOpenAdd, categoriesLoading, categoriesError],
-  );
-
-  const onSaveTxn = async (t: {
-    kind: string;
-    category_id: string | null;
-    amount: number;
-    title: string;
-    note: string | null;
-    occurred_at: string;
-  }) => {
-    setSavingTxn(true);
-    try {
-      if (editingTxn) {
-        const res = await updateTransaction(editingTxn.id, {
-          kind: t.kind,
-          category_id: t.category_id,
-          amount: t.amount,
-          title: t.title,
-          note: t.note,
-          occurred_at: t.occurred_at,
-        });
-        if (res.error) {
-          const msg = res.error.message || 'Could not update transaction';
-          console.error('updateTransaction failed', res.error);
-          setToast({ id: Date.now(), kind: 'error', message: msg });
-          setTimeout(() => setToast(null), 4200);
-          return;
-        }
-        setAdding(false);
-        setEditingTxn(null);
-        setToast({ id: Date.now(), kind: 'done', message: 'Transaction updated' });
-        setTimeout(() => setToast(null), 2600);
-        return;
-      }
-
-      const res = await addTransaction({
-        kind: t.kind,
-        category_id: t.category_id,
-        amount: t.amount,
-        title: t.title,
-        note: t.note,
-        occurred_at: t.occurred_at,
-      });
-      if (res.error) {
-        const msg = res.error.message || 'Could not save transaction';
-        console.error('addTransaction failed', res.error);
-        setToast({ id: Date.now(), kind: 'error', message: msg });
-        setTimeout(() => setToast(null), 4200);
-        return;
-      }
-      setAdding(false);
-      setToast({
-        id: Date.now(),
-        kind: t.kind === 'income' ? 'income' : 'expense',
-        amount: t.amount,
-      });
-      setTimeout(() => setToast(null), 2400);
-    } finally {
-      setSavingTxn(false);
-    }
-  };
-
-  const onDeleteTxn = async () => {
-    if (!editingTxn) return;
-    setDeletingTxn(true);
-    try {
-      const res = await removeTransaction(editingTxn.id);
-      if (res.error) {
-        const msg = res.error.message || 'Could not delete transaction';
-        console.error('removeTransaction failed', res.error);
-        setToast({ id: Date.now(), kind: 'error', message: msg });
-        setTimeout(() => setToast(null), 4200);
-        return;
-      }
-      setAdding(false);
-      setEditingTxn(null);
-      setToast({ id: Date.now(), kind: 'done', message: 'Transaction deleted' });
-      setTimeout(() => setToast(null), 2600);
-    } finally {
-      setDeletingTxn(false);
-    }
-  };
-
-  const openAdd = () => {
-    if (!canOpenAdd) {
-      const msg = categoriesLoading
-        ? 'Still loading categories…'
-        : categoriesError
-          ? 'Fix the data connection, then try again.'
-          : 'Add a category first (Profile → Categories).';
-      setToast({ id: Date.now(), kind: 'error', message: msg });
-      setTimeout(() => setToast(null), 3200);
-      return;
-    }
-    setEditingTxn(null);
-    setAdding(true);
-  };
-
-  const mainTab = (() => {
-    switch (tab) {
-      case 'home':
-        return (
-          <HomeScreen
-            income={home.lifetimeIncome}
-            expense={home.lifetimeExpense}
-            weekBuckets={home.weekBuckets}
-            prevWeekExpense={home.prevWeekExpense}
-            recentTxns={home.recentTxns}
-            accent={ACCENT}
-            resolveCat={resolveCat}
-            currency={currency}
-            onSeeAll={() => navigateToTab('history')}
-            onTxnPress={openEditTxn}
-          />
-        );
-      case 'stats':
-        return (
-          <StatsScreen
-            categoriesExpense={catsExpense}
-            categoriesIncome={catsIncome}
-            resolveCat={resolveCat}
-            currency={currency}
-            onTxnPress={openEditTxn}
-          />
-        );
-      case 'history':
-        return (
-          <HistoryScreen
-            resolveCat={resolveCat}
-            categoriesExpense={catsExpense}
-            categoriesIncome={catsIncome}
-            currency={currency}
-            onTxnPress={openEditTxn}
-          />
-        );
-      case 'categories':
-        return (
-          <CategoriesScreen
-            accent={ACCENT}
-            lists={lists}
-            onAdd={addCategory}
-            onRemove={removeCategory}
-            onUpdate={updateCategory}
-            onReorder={reorderCategory}
-            reordering={categoriesReordering}
-          />
-        );
-      case 'profile':
-        return (
-          <ProfileScreen
-            profile={profile}
-            user={user}
-            updateProfile={updateProfile}
-            lists={lists}
-            onExportTransactions={exportAllTransactions}
-            onGoToCategories={() => navigateToTab('categories')}
-          />
-        );
-      default:
-        return null;
-    }
-  })();
-
-  const mainContent = adding ? (
-    <AddTransactionScreen
-      key={editingTxn?.id ?? 'add-page'}
-      accent={ACCENT}
-      categoriesExpense={catsExpense}
-      categoriesIncome={catsIncome}
-      currency={currency}
-      saving={savingTxn}
-      deleting={deletingTxn}
-      initialTxn={editingTxn}
-      onDelete={editingTxn ? () => void onDeleteTxn() : undefined}
-      onClose={closeTxnSheet}
-      onSave={onSaveTxn}
-      asPage
-    />
-  ) : (
-    mainTab
-  );
-
-  // Categories is a sub-screen of Profile — highlight Profile tab and show a back button
-  const effectiveActiveTab: TabId = tab === 'categories' ? 'profile' : tab;
-
-  const topBarContent =
-    tab === 'categories' ? (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button
-          type="button"
-          onClick={() => navigateToTab('profile')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 3,
-            border: 'none', background: 'none', cursor: 'pointer',
-            color: '#ACACB8', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-            padding: '4px 0',
-          }}
-        >
-          <IChevLeft size={16} />
-          Profile
-        </button>
-        <span style={{ color: '#D1D1DB', fontSize: 13 }}>/</span>
-        <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.3, color: '#0F0F12' }}>
-          Categories
-        </span>
-      </div>
-    ) : tab === 'home' ? (
-      <div>
-        <div style={{ fontSize: 12, color: '#ACACB8', fontWeight: 500 }}>{greetingLine()}</div>
-        <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.3, marginTop: 2 }}>
-          {firstName(profile, user)}
-        </div>
-      </div>
-    ) : tab === 'stats' ? (
-      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Stats</div>
-    ) : tab === 'history' ? (
-      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>History</div>
-    ) : tab === 'profile' ? (
-      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Profile</div>
-    ) : null;
 
   if (initialDataPending) {
     return <AppBootLoading />;
   }
 
+  const shellProps = {
+    user,
+    profile,
+    updateProfile,
+    lists,
+    catsExpense,
+    catsIncome,
+    resolveCat,
+    addCategory,
+    removeCategory,
+    updateCategory,
+    reorderCategory,
+    categoriesReordering,
+    categoriesLoading,
+    categoriesError,
+    home,
+    addTransaction,
+    updateTransaction,
+    removeTransaction,
+    exportAllTransactions,
+    currency,
+    combinedError,
+    retrying,
+    onRetryData: handleRetryData,
+    canOpenAdd,
+    setToast,
+  };
+
   return (
-    <div className="app-shell">
-      <div className={`page-scroll${adding ? ' page-scroll--no-nav' : ''}`}>
-        {!adding && (
-          <AppTopBar onProfile={() => navigateToTab('profile')} profile={profile} user={user}>
-            {topBarContent}
-          </AppTopBar>
-        )}
-        <DataErrorBanner message={combinedError} onRetry={handleRetryData} busy={retrying} />
-        <div className="app-main">
-          {/* Plain keyed div: tab switches stay instant (no exit/enter animation lag). */}
-          <div
-            key={adding ? `add-${editingTxn?.id ?? 'new'}` : tab}
-            style={{
-              flex: 1,
-              alignSelf: 'stretch',
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              minHeight: 0,
-              minWidth: 0,
-              overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
-            }}
-          >
-            {mainContent}
-          </div>
-        </div>
-      </div>
-
-      {!adding && (
-        <nav className="bottom-nav" aria-label="Main">
-          {TABS.map((t) => {
-            if (!t) {
-              return (
-                <div key="fab" className="nav-fab-wrap">
-                  <button
-                    type="button"
-                    className="nav-fab"
-                    onClick={openAdd}
-                    aria-label={canOpenAdd ? 'Add transaction' : 'Add unavailable'}
-                    disabled={!canOpenAdd}
-                    style={{ opacity: canOpenAdd ? 1 : 0.45 }}
-                  >
-                    <IPlus size={26} stroke={2.4} />
-                  </button>
-                </div>
-              );
-            }
-            const active = effectiveActiveTab === t.id;
-            const Icon = t.Icon;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                data-tab={t.id}
-                className={`nav-btn${active ? ' active' : ''}`}
-                aria-current={active ? 'page' : undefined}
-                onClick={() => navigateToTab(t.id)}
-              >
-                <Icon size={22} stroke={active ? 2.3 : 1.8} />
-                {t.label}
-              </button>
-            );
-          })}
-        </nav>
-      )}
-
+    <>
+      <OfflineBanner />
+      <ShellRoutes {...shellProps} />
       <AnimatePresence>
         {toast ? <Toast key={toast.id} toast={toast} accent={ACCENT} currency={currency} /> : null}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

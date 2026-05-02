@@ -1,13 +1,27 @@
-/* ── App shell: full-screen mobile, centered narrow on desktop ── */
+/* ── App shell: full-bleed mobile; max-width only on wide viewports ── */
 .app-shell {
   width: 100%;
-  max-width: 480px;
+  max-width: none;
+  flex: 1;
   min-height: 100dvh;
-  background: #F2F2F7;
+  min-height: 100svh;
+  background: #f2f2f7;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
+}
+
+@media (min-width: 600px) {
+  .app-shell {
+    max-width: 480px;
+    flex: 0 1 480px;
+    box-shadow: 0 0 0 1px rgba(15, 15, 18, 0.06);
+  }
+
+  .bottom-nav {
+    max-width: calc(480px - 28px);
+  }
 }
 
 /* Categories tab: fills scroll area below top bar */
@@ -33,6 +47,8 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   /* extra bottom padding for floating nav + safe area */
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
@@ -46,11 +62,17 @@
   background: #fff;
 }
 
-/* ── Sticky app header (title + profile) ── */
+/* ── Sticky app header (title + profile) — respect notch / status bar ── */
 .app-top-bar.screen-header {
   flex-shrink: 0;
   align-items: stretch;
   min-height: 52px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 12px;
+  padding-top: max(10px, calc(env(safe-area-inset-top, 0px) + 10px));
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .app-top-bar__title {
@@ -67,6 +89,27 @@
   flex-shrink: 0;
 }
 
+.stack-header-back {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 44px;
+  padding: 6px 8px 6px 0;
+  margin-left: -4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #acacb8;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stack-header-back:active {
+  opacity: 0.75;
+}
+
 /* ── Sticky screen header ── */
 .screen-header {
   position: sticky;
@@ -77,12 +120,14 @@
 
 /* ── Floating bottom navigation (frosted glass + per-tab tints) ── */
 .bottom-nav {
+  user-select: none;
+  -webkit-user-select: none;
   position: fixed;
   bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 28px);
-  max-width: calc(480px - 28px);
+  max-width: calc(100% - 28px);
   display: flex;
   align-items: center;
   z-index: 30;
@@ -130,34 +175,24 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 8px 2px;
+  min-height: 48px;
+  padding: 10px 2px;
   border: none;
   background: transparent;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.1px;
-  color: #ACACB8;
+  color: #0f0f12;
   transition:
     color 180ms ease,
     background 180ms ease,
     box-shadow 180ms ease;
   border-radius: 16px;
 }
-.nav-btn[data-tab='home'] {
-  color: rgba(59, 130, 246, 0.45);
-}
-.nav-btn[data-tab='stats'] {
-  color: rgba(124, 58, 237, 0.45);
-}
-.nav-btn[data-tab='history'] {
-  color: rgba(13, 148, 136, 0.45);
-}
-.nav-btn[data-tab='profile'] {
-  color: rgba(217, 119, 6, 0.45);
-}
 .nav-btn.active {
-  color: #0F0F12;
+  color: #0f0f12;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.85),
     0 2px 10px rgba(15, 15, 18, 0.06);
@@ -229,8 +264,10 @@
 .nav-fab:disabled {
   cursor: not-allowed;
 }
-.nav-fab:not(:disabled):hover {
-  transform: scale(1.04);
+@media (hover: hover) {
+  .nav-fab:not(:disabled):hover {
+    transform: scale(1.04);
+  }
 }
 .nav-fab:not(:disabled):active {
   transform: scale(0.93);
@@ -365,6 +402,9 @@ button.txn-row.txn-row-btn {
   border: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  min-height: 52px;
 }
 button.txn-row.txn-row-btn:active {
   background: rgba(15, 15, 18, 0.045);
@@ -505,13 +545,17 @@ button.txn-row.txn-row-btn:active {
 
 /* ── Filter chips ── */
 .chip {
-  padding: 7px 16px;
+  min-height: 44px;
+  padding: 10px 18px;
   border-radius: 999px;
   border: none;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 140ms;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .chip-active { background: #0F0F12; color: #fff; }
 .chip-idle   { background: #EBEBF0; color: #6B6B80; }
@@ -634,14 +678,18 @@ button.txn-row.txn-row-btn:active {
   z-index: 2;
   flex: 1;
   padding: 7px 12px;
+  margin: 0;
   border: none;
   background: transparent;
   font-size: 13px;
   font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
   border-radius: 8px;
   transition: color 200ms;
   white-space: nowrap;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Stats period strip (4-way) — same glass language */
