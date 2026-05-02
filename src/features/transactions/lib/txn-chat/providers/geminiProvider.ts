@@ -1,5 +1,13 @@
 import { GoogleGenAI } from '@google/genai';
 import type { TxnChatProvider } from '@/features/transactions/lib/txn-chat/providers/types';
+import type { ImportColumnMapRequest, ImportColumnMapResult } from '@/features/transactions/lib/txn-chat/import/types';
+import {
+  IMPORT_COLUMN_MAP_JSON_SCHEMA,
+  buildImportColumnMapSystemMessage,
+  buildImportColumnMapUserJson,
+  headersForImportMapPrompt,
+} from '@/features/transactions/lib/txn-chat/import/columnMapPrompt';
+import { normalizeImportColumnMapJson } from '@/features/transactions/lib/txn-chat/import/normalizeColumnMap';
 import type { TxnChatTurnRequest, TxnChatTurnResult } from '@/features/transactions/lib/txn-chat/types';
 import {
   TXN_CHAT_RESPONSE_JSON_SCHEMA,
@@ -51,6 +59,33 @@ export function createGeminiTxnChatProvider(opts: GeminiTxnChatProviderOptions):
         throw new Error('Model returned invalid JSON');
       }
       return normalizeTxnChatJson(parsed);
+    },
+    async suggestImportColumnMap(req: ImportColumnMapRequest): Promise<ImportColumnMapResult> {
+      const hdrs = headersForImportMapPrompt(req.headers);
+      const systemInstruction = buildImportColumnMapSystemMessage(req.currency);
+      const body = buildImportColumnMapUserJson(req);
+
+      const ai = new GoogleGenAI({ apiKey: opts.apiKey });
+      const response = await ai.models.generateContent({
+        model,
+        contents: body,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseJsonSchema: { ...(IMPORT_COLUMN_MAP_JSON_SCHEMA as Record<string, unknown>) },
+          temperature: 0.2,
+        },
+      });
+
+      const rawText = response.text;
+      if (!rawText?.trim()) throw new Error('Empty response from Gemini');
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(rawText) as unknown;
+      } catch {
+        throw new Error('Model returned invalid JSON');
+      }
+      return normalizeImportColumnMapJson(parsed, hdrs);
     },
   };
 }

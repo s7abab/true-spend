@@ -1,4 +1,12 @@
 import type { TxnChatProvider } from '@/features/transactions/lib/txn-chat/providers/types';
+import type { ImportColumnMapRequest, ImportColumnMapResult } from '@/features/transactions/lib/txn-chat/import/types';
+import {
+  buildImportColumnMapSystemMessage,
+  buildImportColumnMapUserJson,
+  headersForImportMapPrompt,
+  importColumnMapJsonFooter,
+} from '@/features/transactions/lib/txn-chat/import/columnMapPrompt';
+import { normalizeImportColumnMapJson } from '@/features/transactions/lib/txn-chat/import/normalizeColumnMap';
 import type { TxnChatTurnRequest, TxnChatTurnResult } from '@/features/transactions/lib/txn-chat/types';
 import {
   buildTxnChatSystemInstruction,
@@ -102,6 +110,59 @@ export function createOpenRouterTxnChatProvider(opts: OpenRouterTxnChatProviderO
         throw new Error('Model returned invalid JSON');
       }
       return normalizeTxnChatJson(parsed);
+    },
+    async suggestImportColumnMap(req: ImportColumnMapRequest): Promise<ImportColumnMapResult> {
+      const hdrs = headersForImportMapPrompt(req.headers);
+      const sys = buildImportColumnMapSystemMessage(req.currency);
+      const data = buildImportColumnMapUserJson(req);
+      const combinedUser = [sys, '', 'Data:', data, importColumnMapJsonFooter()].join('\n');
+
+      const referer =
+        opts.httpReferer?.trim() ||
+        (typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'http://localhost');
+
+      const res = await fetch(OPENROUTER_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${opts.apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': referer,
+          'X-Title': opts.appTitle?.trim() || 'Truspend',
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.2,
+          max_tokens: 256,
+          response_format: { type: 'json_object' },
+          messages: [{ role: 'user', content: combinedUser }],
+        }),
+      });
+
+      const dataJson = (await res.json()) as Record<string, unknown>;
+      if (!res.ok) {
+        const errObj = dataJson?.error as Record<string, unknown> | undefined;
+        const msg =
+          (typeof errObj?.message === 'string' && errObj.message) ||
+          (typeof dataJson?.message === 'string' && dataJson.message) ||
+          `OpenRouter error (${res.status})`;
+        throw new Error(msg);
+      }
+
+      const choices = dataJson.choices as unknown;
+      const first =
+        Array.isArray(choices) && choices[0] && typeof choices[0] === 'object'
+          ? (choices[0] as Record<string, unknown>)
+          : null;
+      const message = first?.message as Record<string, unknown> | undefined;
+      const rawText = textFromChatMessageContent(message?.content);
+      if (!rawText.trim()) throw new Error('Empty response from OpenRouter');
+      let parsed: unknown;
+      try {
+        parsed = parseJsonFromModelText(rawText);
+      } catch {
+        throw new Error('Model returned invalid JSON');
+      }
+      return normalizeImportColumnMapJson(parsed, hdrs);
     },
   };
 }

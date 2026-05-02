@@ -21,6 +21,7 @@ import {
   writePersistedAiChat,
   clearPersistedAiChat,
 } from '@/features/transactions/lib/txnUiLocalStorage';
+import { TxnChatImportBar } from '@/features/transactions/components/TxnChatImportBar';
 import '@/features/transactions/styles/TxnChatScreen.css';
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -283,6 +284,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
   const [chatHydrated, setChatHydrated] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
 
   const txnAi = useMemo(() => resolveTxnChatFromEnv(), []);
 
@@ -319,7 +321,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
     writePersistedAiChat({ v: 1, messages: chatTurnsToPersisted(messages), input });
   }, [chatHydrated, messages, input]);
 
-  const busy = Boolean(sending || savingId);
+  const busy = Boolean(sending || savingId || importBusy);
   const onActivityChange = props.onActivityChange;
   useEffect(() => {
     onActivityChange?.(busy);
@@ -513,7 +515,8 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
           <div className="txn-chat-hint" style={{ paddingTop: 24 }}>
             Include amounts in {cur} when you can — e.g. “Coffee 120 today”, “80 bus + 200 groceries yesterday”. If you
             list several things and only some have prices, you will get a card per line and can type the missing amounts
-            before saving.
+            before saving. Use Import file below for CSV, Excel, or PDF — one quick column map, then confirm to add
+            rows as editable cards.
           </div>
         ) : null}
         {messages.map((m) => (
@@ -749,24 +752,55 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
         ) : null}
       </div>
 
-      <div className="txn-chat-footer">
-        <textarea
-          className="txn-chat-input"
-          rows={1}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Message…"
-          disabled={sending || Boolean(savingId)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              void send();
-            }
-          }}
-        />
-        <button type="button" className="txn-chat-send" disabled={sending || !input.trim() || Boolean(savingId)} onClick={() => void send()}>
-          Send
-        </button>
+      <div className="txn-chat-footer-stack">
+        {txnAi.ok ? (
+          <TxnChatImportBar
+            provider={txnAi.provider}
+            currency={props.currency}
+            disabled={busy}
+            canOpenAdd={props.canOpenAdd}
+            onBusy={setImportBusy}
+            setToast={props.setToast}
+            onImported={({ fileName, reply, transactions }) => {
+              const txsForDrafts = filterTxnChatRowsForDraftUi(transactions);
+              const built =
+                txsForDrafts.length > 0
+                  ? buildChatDrafts(txsForDrafts, props.catsExpense, props.catsIncome, props.catsTransfer)
+                  : undefined;
+              const uid = `u-${Date.now()}`;
+              const aid = `a-${Date.now()}`;
+              setMessages((prev) => [
+                ...prev,
+                { id: uid, role: 'user', text: `File import: ${fileName}` },
+                { id: aid, role: 'assistant', text: reply, drafts: built && built.length > 0 ? built : undefined },
+              ]);
+            }}
+          />
+        ) : null}
+        <div className="txn-chat-footer">
+          <textarea
+            className="txn-chat-input"
+            rows={1}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Message…"
+            disabled={sending || Boolean(savingId) || importBusy}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="txn-chat-send"
+            disabled={sending || !input.trim() || Boolean(savingId) || importBusy}
+            onClick={() => void send()}
+          >
+            Send
+          </button>
+        </div>
       </div>
     </div>
   );
