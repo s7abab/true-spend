@@ -471,6 +471,7 @@ function AuthedApp({ user }: { user: User | null }) {
               <button
                 key={t.id}
                 type="button"
+                data-tab={t.id}
                 className={`nav-btn${active ? ' active' : ''}`}
                 aria-current={active ? 'page' : undefined}
                 onClick={() => navigateToTab(t.id)}

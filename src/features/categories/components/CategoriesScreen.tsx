@@ -79,7 +79,10 @@ export function CategoriesScreen({
   return (
     <div className="categories-tab categories-page" style={accentVar}>
       <div className="seg" style={{ margin: '0 16px 10px' }}>
-        <div className="seg-thumb" style={{ left: kind === 'expense' ? 3 : '50%', width: 'calc(50% - 3px)' }} />
+        <div
+          className={`seg-thumb${kind === 'expense' ? ' seg-thumb--rose' : ' seg-thumb--emerald'}`}
+          style={{ left: kind === 'expense' ? 3 : '50%', width: 'calc(50% - 3px)' }}
+        />
         {(['expense', 'income'] as const).map((k) => (
           <button
             key={k}

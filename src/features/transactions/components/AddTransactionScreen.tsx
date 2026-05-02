@@ -190,7 +190,10 @@ export function AddTransactionScreen({
           <IClose size={16} />
         </button>
         <div className="seg" style={{ flex: 1 }}>
-          <div className="seg-thumb" style={{ left: isExp ? 3 : '50%', width: 'calc(50% - 3px)' }} />
+          <div
+            className={`seg-thumb${isExp ? ' seg-thumb--rose' : ' seg-thumb--emerald'}`}
+            style={{ left: isExp ? 3 : '50%', width: 'calc(50% - 3px)' }}
+          />
           {(['expense', 'income'] as const).map((t) => {
             const disabled = (t === 'expense' && !hasExp) || (t === 'income' && !hasInc);
             return (
