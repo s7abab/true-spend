@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, type ComponentType } from 'react';
 import type { MappedTxn } from '@/utils/txnMap';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { HomeScreen } from '@/features/transactions/components/HomeScreen';
 import { StatsScreen } from '@/features/stats/components/StatsScreen';
 import { HistoryScreen } from '@/features/history/components/HistoryScreen';
@@ -287,59 +287,68 @@ function AuthedApp({ user }: { user: User | null }) {
     setAdding(true);
   };
 
-  const screen = {
-    home: (
-      <HomeScreen
-        income={home.lifetimeIncome}
-        expense={home.lifetimeExpense}
-        weekBuckets={home.weekBuckets}
-        prevWeekExpense={home.prevWeekExpense}
-        recentTxns={home.recentTxns}
-        accent={ACCENT}
-        resolveCat={resolveCat}
-        currency={currency}
-        onSeeAll={() => navigateToTab('history')}
-        onTxnPress={openEditTxn}
-      />
-    ),
-    stats: (
-      <StatsScreen
-        categoriesExpense={catsExpense}
-        categoriesIncome={catsIncome}
-        resolveCat={resolveCat}
-        currency={currency}
-        onTxnPress={openEditTxn}
-      />
-    ),
-    history: (
-      <HistoryScreen
-        resolveCat={resolveCat}
-        categoriesExpense={catsExpense}
-        categoriesIncome={catsIncome}
-        currency={currency}
-        onTxnPress={openEditTxn}
-      />
-    ),
-    categories: (
-      <CategoriesScreen
-        accent={ACCENT}
-        lists={lists}
-        onAdd={addCategory}
-        onRemove={removeCategory}
-        onUpdate={updateCategory}
-      />
-    ),
-    profile: (
-      <ProfileScreen
-        profile={profile}
-        user={user}
-        updateProfile={updateProfile}
-        lists={lists}
-        onExportTransactions={exportAllTransactions}
-        onGoToCategories={() => navigateToTab('categories')}
-      />
-    ),
-  }[tab];
+  const mainTab = (() => {
+    switch (tab) {
+      case 'home':
+        return (
+          <HomeScreen
+            income={home.lifetimeIncome}
+            expense={home.lifetimeExpense}
+            weekBuckets={home.weekBuckets}
+            prevWeekExpense={home.prevWeekExpense}
+            recentTxns={home.recentTxns}
+            accent={ACCENT}
+            resolveCat={resolveCat}
+            currency={currency}
+            onSeeAll={() => navigateToTab('history')}
+            onTxnPress={openEditTxn}
+          />
+        );
+      case 'stats':
+        return (
+          <StatsScreen
+            categoriesExpense={catsExpense}
+            categoriesIncome={catsIncome}
+            resolveCat={resolveCat}
+            currency={currency}
+            onTxnPress={openEditTxn}
+          />
+        );
+      case 'history':
+        return (
+          <HistoryScreen
+            resolveCat={resolveCat}
+            categoriesExpense={catsExpense}
+            categoriesIncome={catsIncome}
+            currency={currency}
+            onTxnPress={openEditTxn}
+          />
+        );
+      case 'categories':
+        return (
+          <CategoriesScreen
+            accent={ACCENT}
+            lists={lists}
+            onAdd={addCategory}
+            onRemove={removeCategory}
+            onUpdate={updateCategory}
+          />
+        );
+      case 'profile':
+        return (
+          <ProfileScreen
+            profile={profile}
+            user={user}
+            updateProfile={updateProfile}
+            lists={lists}
+            onExportTransactions={exportAllTransactions}
+            onGoToCategories={() => navigateToTab('categories')}
+          />
+        );
+      default:
+        return null;
+    }
+  })();
 
   const mainContent = adding ? (
     <AddTransactionScreen
@@ -357,7 +366,7 @@ function AuthedApp({ user }: { user: User | null }) {
       asPage
     />
   ) : (
-    screen
+    mainTab
   );
 
   // Categories is a sub-screen of Profile — highlight Profile tab and show a back button
@@ -439,19 +448,16 @@ function AuthedApp({ user }: { user: User | null }) {
             if (!t) {
               return (
                 <div key="fab" className="nav-fab-wrap">
-                  <motion.button
+                  <button
                     type="button"
                     className="nav-fab"
                     onClick={openAdd}
                     aria-label={canOpenAdd ? 'Add transaction' : 'Add unavailable'}
                     disabled={!canOpenAdd}
-                    whileTap={canOpenAdd ? { scale: 0.92 } : undefined}
-                    whileHover={canOpenAdd ? { scale: 1.04 } : undefined}
-                    transition={{ type: 'spring', stiffness: 500, damping: 22 }}
                     style={{ opacity: canOpenAdd ? 1 : 0.45 }}
                   >
                     <IPlus size={26} stroke={2.4} />
-                  </motion.button>
+                  </button>
                 </div>
               );
             }

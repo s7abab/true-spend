@@ -12,7 +12,7 @@ export function formatMoney(amount: unknown, currency = 'INR'): string {
   }
 }
 
-/** Narrow symbol for CountUp / keypad (e.g. ₹, $). */
+/** Narrow symbol for keypad / inline amounts (e.g. ₹, $). */
 export function currencyPrefix(currency = 'INR'): string {
   const code = currency && typeof currency === 'string' ? currency.toUpperCase() : 'INR';
   try {

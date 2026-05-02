@@ -141,7 +141,7 @@ export function useCategories() {
   );
 
   const updateCategory = useCallback(
-    async (kind: TransactionKind, id: string, patch: { label: string; icon: string }) => {
+    async (_kind: TransactionKind, id: string, patch: { label: string; icon: string }) => {
       if (!userId) return { error: new Error('not signed in') as Error, data: null };
       const t = (patch.label ?? '').trim();
       if (!t) return { error: new Error('label required'), data: null };

@@ -41,9 +41,13 @@ export function StatsScreen({ categoriesExpense, categoriesIncome, resolveCat, c
   useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 300); return () => clearTimeout(t); }, [search]);
 
   const info = useMemo(() => getPeriodWindow(period, offset), [period, offset]);
+  const tz = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    [],
+  );
   const summaryQ = usePeriodSummary(period, offset);
   const prevSummaryQ = usePeriodSummary(period, offset - 1);
-  const trendQ = usePeriodTrend(period, offset, Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+  const trendQ = usePeriodTrend(period, offset, tz);
   const expQ = useStatsAggregates(period, offset, 'expense', statsKind !== 'income');
   const incQ = useStatsAggregates(period, offset, 'income', statsKind !== 'expense');
 

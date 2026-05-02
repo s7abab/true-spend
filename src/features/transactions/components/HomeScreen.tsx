@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { IArrowDown, IArrowUp, ICTrend, ICalendar } from '@/shared/components/Icons';
 import { TxnRow } from '@/shared/components/TxnRow';
-import { CountUp } from '@/shared/components/CountUp';
 import { formatMoney } from '@/utils/money';
 import { weekOverWeekLabel, todayIndexInCurrentWeek } from '@/utils/spending';
 import type { CategoryRow } from '@/features/categories/types';
@@ -98,7 +97,7 @@ export function HomeScreen({
           </div>
         </div>
         <div className="balance-amount" style={{ position: 'relative', zIndex: 1 }}>
-          <CountUp value={balance} currency={currency} />
+          {formatMoney(balance, currency)}
         </div>
         <div className="balance-pills">
           {/* Income: arrow pointing UP (money coming in) */}
