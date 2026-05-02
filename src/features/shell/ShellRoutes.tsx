@@ -19,6 +19,7 @@ import { AppBootLoading } from '@/shared/components/loading';
 import { AppTopBar } from '@/shared/components/AppTopBar';
 import { DataErrorBanner } from '@/shared/components/DataErrorBanner';
 import { AddTransactionScreen } from '@/features/transactions/components/AddTransactionScreen';
+import { TxnChatScreen } from '@/features/transactions/components/TxnChatScreen';
 import { IHome, IChart, IList, IUser, IPlus, IChevLeft } from '@/shared/components/Icons';
 import type { ProfileRow } from '@/features/profile/types';
 import type { User } from '@supabase/supabase-js';
@@ -222,6 +223,54 @@ function TabShellLayout(props: ShellRoutesProps) {
           );
         })}
       </nav>
+    </div>
+  );
+}
+
+function TxnChatRoute(props: ShellRoutesProps) {
+  const navigate = useNavigate();
+  useSwipeBack({ enabled: true, onBack: () => navigate(-1) });
+
+  return (
+    <div className="app-shell">
+      <div className="page-scroll page-scroll--no-nav">
+        <div className="app-main">
+          <div
+            style={{
+              flex: 1,
+              alignSelf: 'stretch',
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+              minWidth: 0,
+              overflowY: 'hidden',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, x: 28 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.26, ease }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+            >
+              <TxnChatScreen
+                catsExpense={props.catsExpense}
+                catsIncome={props.catsIncome}
+                addTransaction={props.addTransaction}
+                currency={props.currency}
+                combinedError={props.combinedError}
+                retrying={props.retrying}
+                onRetryData={props.onRetryData}
+                setToast={props.setToast}
+                canOpenAdd={props.canOpenAdd}
+                categoriesLoading={props.categoriesLoading}
+                categoriesError={props.categoriesError}
+              />
+            </motion.div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -501,6 +550,7 @@ export function ShellRoutes(props: ShellRoutesProps) {
       <Route path="/categories" element={<Navigate to="/profile/categories" replace />} />
 
       <Route path="/add" element={<AddTransactionRoute {...props} />} />
+      <Route path="/chat" element={<TxnChatRoute {...props} />} />
       <Route path="/edit/:txnId" element={<EditTransactionRoute {...props} />} />
 
       <Route element={<TabShellLayout {...props} />}>

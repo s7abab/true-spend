@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { IBackspace, ICheck, IClose, ICalendar, IPlus, ITrash, ICON_MAP } from '@/shared/components/Icons';
 import { parseDateInput, toDateInputValue } from '@/features/history/utils/dateRange';
@@ -77,6 +78,7 @@ export function AddTransactionScreen({
   saving = false,
   asPage = false,
 }: AddTransactionScreenProps) {
+  const navigate = useNavigate();
   const isEdit = Boolean(initialTxn);
   const [kind, setKind] = useState<TransactionKind>(() =>
     initialTxn ? initialTxn.kind : initialKindAndCat(categoriesExpense, categoriesIncome).kind,
@@ -189,6 +191,27 @@ export function AddTransactionScreen({
         >
           <IClose size={16} />
         </button>
+        {asPage && !isEdit ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => navigate('/chat')}
+            style={{
+              flexShrink: 0,
+              padding: '7px 11px',
+              borderRadius: 999,
+              border: '1px solid #E8E8EF',
+              background: '#FAFAFB',
+              color: '#0F0F12',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: busy ? 'default' : 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            AI chat
+          </button>
+        ) : null}
         <div className="seg" style={{ flex: 1 }}>
           <div
             className={`seg-thumb${isExp ? ' seg-thumb--rose' : ' seg-thumb--emerald'}`}
