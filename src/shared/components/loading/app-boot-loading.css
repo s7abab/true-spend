@@ -1,0 +1,68 @@
+/* Shared loading / placeholder visuals — import where needed or via index.css */
+
+@keyframes app-boot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.app-boot-loading {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  background: #f2f2f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-boot-loading__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 24px;
+}
+
+.app-boot-loading__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #acacb8;
+}
+
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2.5px solid #e8e8ed;
+  border-top-color: #0f0f12;
+  animation: app-boot-spin 0.7s linear infinite;
+}
+
+.loading-spinner--sm {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+}
+
+.loading-panel-placeholder {
+  border-radius: 20px;
+  background: linear-gradient(
+    110deg,
+    #f4f4f7 0%,
+    #ececf2 40%,
+    #f4f4f7 80%
+  );
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.4s ease-in-out infinite;
+}

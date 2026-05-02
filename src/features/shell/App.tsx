@@ -6,9 +6,9 @@ import { StatsScreen } from '@/features/stats/components/StatsScreen';
 import { HistoryScreen } from '@/features/history/components/HistoryScreen';
 import { ProfileScreen } from '@/features/profile/components/ProfileScreen';
 import { AddTransactionScreen } from '@/features/transactions/components/AddTransactionScreen';
-import { SMOOTH_DECEL } from '@/shared/motion/sheetMotion';
 import { CategoriesScreen } from '@/features/categories/components/CategoriesScreen';
 import { SignInScreen } from '@/features/auth/components/SignInScreen';
+import { AppBootLoading } from '@/shared/components/loading';
 import { AppTopBar } from '@/shared/components/AppTopBar';
 import { Toast, type ToastPayload } from '@/shared/components/Toast';
 import { DataErrorBanner } from '@/shared/components/DataErrorBanner';
@@ -58,36 +58,16 @@ function greetingLine(): string {
   return 'Good evening';
 }
 
-function Splash() {
-  return (
-    <div className="app-shell" style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.25 }}
-        style={{ color: '#ACACB8', fontSize: 13, fontWeight: 500 }}
-      >
-        Loading…
-      </motion.div>
-    </div>
-  );
-}
-
 export default function App() {
   const { session, user, loading: authLoading } = useAuth();
 
-  if (authLoading) return <Splash />;
+  if (authLoading) return <AppBootLoading />;
   if (!session) {
     return (
       <div className="app-shell">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
-        >
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <SignInScreen />
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -96,7 +76,13 @@ export default function App() {
 }
 
 function AuthedApp({ user }: { user: User | null }) {
-  const { profile, updateProfile, error: profileError, refetch: refetchProfile } = useProfile();
+  const {
+    profile,
+    updateProfile,
+    loading: profileLoading,
+    error: profileError,
+    refetch: refetchProfile,
+  } = useProfile();
   const {
     catsExpense,
     catsIncome,
@@ -115,10 +101,16 @@ function AuthedApp({ user }: { user: User | null }) {
     updateTransaction,
     removeTransaction,
     exportAllTransactions,
+    loading: homeLoading,
     error: txnsError,
     refetch: refetchTransactions,
   } = useTransactions();
   const currency = profile?.currency || 'INR';
+
+  const initialDataPending =
+    (profileLoading && !profileError) ||
+    (categoriesLoading && !categoriesError) ||
+    (homeLoading && !txnsError);
 
   const [tab, setTab] = useState<TabId>(() => {
     if (typeof window === 'undefined') return 'home';
@@ -407,6 +399,10 @@ function AuthedApp({ user }: { user: User | null }) {
       <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Profile</div>
     ) : null;
 
+  if (initialDataPending) {
+    return <AppBootLoading />;
+  }
+
   return (
     <div className="app-shell">
       <div className={`page-scroll${adding ? ' page-scroll--no-nav' : ''}`}>
@@ -417,25 +413,23 @@ function AuthedApp({ user }: { user: User | null }) {
         )}
         <DataErrorBanner message={combinedError} onRetry={handleRetryData} busy={retrying} />
         <div className="app-main">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={adding ? `add-${editingTxn?.id ?? 'new'}` : tab}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.36, ease: SMOOTH_DECEL }}
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: 0,
-                overflowY: 'auto',
-                WebkitOverflowScrolling: 'touch',
-              }}
-            >
-              {mainContent}
-            </motion.div>
-          </AnimatePresence>
+          {/* Plain keyed div: tab switches stay instant (no exit/enter animation lag). */}
+          <div
+            key={adding ? `add-${editingTxn?.id ?? 'new'}` : tab}
+            style={{
+              flex: 1,
+              alignSelf: 'stretch',
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+              minWidth: 0,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            {mainContent}
+          </div>
         </div>
       </div>
 

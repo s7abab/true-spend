@@ -14,41 +14,11 @@ import {
   type HistoryTransactionQuery,
 } from '@/features/history/types';
 import '@/features/history/styles/HistoryFilters.css';
+import { TxnListSkeletonGroup, LoadingSpinner } from '@/shared/components/loading';
 
 export { TxnRow } from '@/shared/components/TxnRow';
 
 type ResolveCat = (id: string | null, kind: TransactionKind | string | undefined) => CategoryRow;
-
-function SkeletonRow() {
-  return (
-    <div
-      style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '11px 16px', borderBottom: '1px solid #F5F5F8',
-      }}
-    >
-      <div style={{ width: 44, height: 44, borderRadius: 14, background: '#EBEBF0', flexShrink: 0 }} />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ width: '55%', height: 13, borderRadius: 6, background: '#EBEBF0' }} />
-        <div style={{ width: '30%', height: 10, borderRadius: 6, background: '#F2F2F7' }} />
-      </div>
-      <div style={{ width: 56, height: 13, borderRadius: 6, background: '#EBEBF0' }} />
-    </div>
-  );
-}
-
-function SkeletonGroup() {
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{ width: 60, height: 10, borderRadius: 5, background: '#DCDCE4', margin: '0 20px 8px' }} />
-      <div style={{ margin: '0 16px', background: '#fff', borderRadius: 18, overflow: 'hidden' }}>
-        <SkeletonRow />
-        <SkeletonRow />
-        <SkeletonRow />
-      </div>
-    </div>
-  );
-}
 
 type HistoryScreenProps = {
   resolveCat: ResolveCat;
@@ -154,8 +124,8 @@ export function HistoryScreen({
       <div style={{ marginTop: 16, paddingBottom: 8 }}>
         {loading ? (
           <>
-            <SkeletonGroup />
-            <SkeletonGroup />
+            <TxnListSkeletonGroup />
+            <TxnListSkeletonGroup />
           </>
         ) : groups.length > 0 ? (
           groups.map(({ dayKey, header, list }) => (
@@ -199,7 +169,14 @@ export function HistoryScreen({
               fontSize: 13,
             }}
           >
-            {loadingMore ? 'Loading more…' : ''}
+            {loadingMore ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <LoadingSpinner size="sm" />
+                Loading more…
+              </span>
+            ) : (
+              ''
+            )}
           </div>
         )}
       </div>

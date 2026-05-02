@@ -7,6 +7,7 @@ import type { CategoryRow } from '@/features/categories/types';
 import type { TransactionKind } from '@/types/ledger';
 import type { MappedTxn } from '@/utils/txnMap';
 import { useMemo } from 'react';
+import { LoadingSpinner, TxnListSkeletonGroup } from '@/shared/components/loading';
 
 type ResolveCat = (id: string | null, kind: TransactionKind | string | undefined) => CategoryRow;
 
@@ -87,7 +88,12 @@ export function StatsDetailSheet({
         </div>
 
         {loading && (
-          <div style={{ textAlign: 'center', padding: '20px 0', color: '#ACACB8', fontSize: 14 }}>Loading…</div>
+          <div style={{ padding: '8px 0 0' }} aria-busy="true">
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
+              <LoadingSpinner />
+            </div>
+            <TxnListSkeletonGroup />
+          </div>
         )}
         {error && (
           <div style={{ textAlign: 'center', padding: '12px 16px', color: '#FF4D6D', fontSize: 13 }}>{error}</div>
@@ -147,7 +153,14 @@ export function StatsDetailSheet({
                   fontFamily: 'inherit',
                 }}
               >
-                {loadingMore ? 'Loading…' : 'Load more'}
+                {loadingMore ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <LoadingSpinner size="sm" />
+                    Loading…
+                  </span>
+                ) : (
+                  'Load more'
+                )}
               </button>
             </div>
           )}
