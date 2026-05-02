@@ -481,7 +481,18 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
   return (
     <div className={`txn-chat-page${layout === 'embedded' ? ' txn-chat-page--embedded' : ''}`}>
       {layout === 'page' ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            paddingLeft: 16,
+            paddingRight: 16,
+            paddingBottom: 8,
+            paddingTop: 'max(12px, calc(env(safe-area-inset-top, 0px) + 10px))',
+            flexShrink: 0,
+          }}
+        >
           <button type="button" disabled={busy} onClick={onClose} className="sheet-close-btn" aria-label="Close">
             <IClose size={16} />
           </button>

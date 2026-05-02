@@ -119,25 +119,57 @@ function RouteFallback() {
   return <AppBootLoading />;
 }
 
-function AiChatTabRoute(props: ShellRoutesProps) {
+function AiChatRoute(props: ShellRoutesProps) {
+  const navigate = useNavigate();
+  useSwipeBack({ enabled: true, onBack: () => navigate(-1) });
+
   return (
-    <TxnChatScreen
-      layout="embedded"
-      onTransactionsSaved={() => {}}
-      catsExpense={props.catsExpense}
-      catsIncome={props.catsIncome}
-      catsTransfer={props.catsTransfer}
-      addTransaction={props.addTransaction}
-      addTransactions={props.addTransactions}
-      currency={props.currency}
-      combinedError={props.combinedError}
-      retrying={props.retrying}
-      onRetryData={props.onRetryData}
-      setToast={props.setToast}
-      canOpenAdd={props.canOpenAdd}
-      categoriesLoading={props.categoriesLoading}
-      categoriesError={props.categoriesError}
-    />
+    <div className="app-shell">
+      <div className="page-scroll page-scroll--no-nav">
+        <div className="app-main">
+          <div
+            style={{
+              flex: 1,
+              alignSelf: 'stretch',
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+              minWidth: 0,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, x: 28 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.26, ease }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+            >
+              <Suspense fallback={<RouteFallback />}>
+                <TxnChatScreen
+                  layout="page"
+                  onTransactionsSaved={() => {}}
+                  catsExpense={props.catsExpense}
+                  catsIncome={props.catsIncome}
+                  catsTransfer={props.catsTransfer}
+                  addTransaction={props.addTransaction}
+                  addTransactions={props.addTransactions}
+                  currency={props.currency}
+                  combinedError={props.combinedError}
+                  retrying={props.retrying}
+                  onRetryData={props.onRetryData}
+                  setToast={props.setToast}
+                  canOpenAdd={props.canOpenAdd}
+                  categoriesLoading={props.categoriesLoading}
+                  categoriesError={props.categoriesError}
+                />
+              </Suspense>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -167,23 +199,19 @@ function TabShellLayout(props: ShellRoutesProps) {
     <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Stats</div>
   ) : activeTab === 'history' ? (
     <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>History</div>
-  ) : activeTab === 'chat' ? (
-    <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>{TXN_ASSISTANT_DISPLAY_NAME}</div>
   ) : activeTab === 'profile' ? (
     <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6 }}>Profile</div>
   ) : null;
 
   return (
     <div className="app-shell">
-      <div className={`page-scroll${activeTab === 'chat' ? ' page-scroll--tab-chat' : ''}`}>
+      <div className="page-scroll">
         <AppTopBar onProfile={() => navigate('/profile')} profile={props.profile} user={props.user}>
           {topBarContent}
         </AppTopBar>
         <DataErrorBanner message={props.combinedError} onRetry={props.onRetryData} busy={props.retrying} />
         <div className="app-main">
-          <div
-            className={`tab-outlet-scroll${activeTab === 'chat' ? ' tab-outlet-scroll--chat' : ''}`}
-          >
+          <div className="tab-outlet-scroll">
             <Suspense fallback={<RouteFallback />}>
               <Outlet />
             </Suspense>
@@ -532,6 +560,7 @@ export function ShellRoutes(props: ShellRoutesProps) {
       <Route path="/categories" element={<Navigate to="/profile/categories" replace />} />
 
       <Route path="/add" element={<AddTransactionRoute {...props} />} />
+      <Route path="/chat" element={<AiChatRoute {...props} />} />
       <Route path="/edit/:txnId" element={<EditTransactionRoute {...props} />} />
 
       <Route path="/" element={<TabShellLayout {...props} />}>
@@ -578,7 +607,6 @@ export function ShellRoutes(props: ShellRoutesProps) {
             />
           }
         />
-        <Route path="chat" element={<AiChatTabRoute {...props} />} />
         <Route path="profile" element={<ProfileStackLayout />}>
           <Route
             index
