@@ -1,6 +1,7 @@
 .txn-chat-page {
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
+  min-width: 0;
   background: #fff;
   display: flex;
   flex-direction: column;
@@ -16,10 +17,12 @@
 }
 
 .txn-chat-scroll {
-  flex: 1;
+  flex: 1 1 0%;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   padding: 12px 16px 20px;
   display: flex;
   flex-direction: column;
@@ -120,7 +123,8 @@
   padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid #E8E8EF;
-  font-size: 14px;
+  /* 16px avoids iOS zoom-on-focus and stabilizes mobile layout */
+  font-size: 16px;
   font-family: inherit;
   color: #0F0F12;
   background: #FAFAFB;
@@ -146,6 +150,7 @@
   gap: 10px;
   /* Stretch so the Send control matches the textarea height; center label inside the button */
   align-items: stretch;
+  touch-action: manipulation;
 }
 
 .txn-chat-input {
@@ -157,13 +162,16 @@
   border-radius: 12px;
   border: 1px solid #E8E8EF;
   padding: 10px 12px;
-  font-size: 15px;
+  font-size: 16px;
+  line-height: 1.35;
   font-family: inherit;
   color: #0F0F12;
   background: #FAFAFB;
   outline: none;
   box-sizing: border-box;
   align-self: stretch;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .txn-chat-input:focus {
@@ -227,4 +235,24 @@
   text-align: center;
   padding: 8px 12px 0;
   line-height: 1.4;
+}
+
+@media (max-width: 520px) {
+  .txn-chat-draft-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .txn-chat-bubble {
+    max-width: min(100%, 100vw - 32px);
+  }
+
+  .txn-chat-scroll {
+    padding-left: max(12px, env(safe-area-inset-left, 0px));
+    padding-right: max(12px, env(safe-area-inset-right, 0px));
+  }
+
+  .txn-chat-footer {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
 }

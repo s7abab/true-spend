@@ -175,26 +175,14 @@ function TabShellLayout(props: ShellRoutesProps) {
 
   return (
     <div className="app-shell">
-      <div className="page-scroll">
+      <div className={`page-scroll${activeTab === 'chat' ? ' page-scroll--tab-chat' : ''}`}>
         <AppTopBar onProfile={() => navigate('/profile')} profile={props.profile} user={props.user}>
           {topBarContent}
         </AppTopBar>
         <DataErrorBanner message={props.combinedError} onRetry={props.onRetryData} busy={props.retrying} />
         <div className="app-main">
           <div
-            className="tab-outlet-scroll"
-            style={{
-              flex: 1,
-              alignSelf: 'stretch',
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              minHeight: 0,
-              minWidth: 0,
-              overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              overscrollBehaviorY: 'contain',
-            }}
+            className={`tab-outlet-scroll${activeTab === 'chat' ? ' tab-outlet-scroll--chat' : ''}`}
           >
             <Suspense fallback={<RouteFallback />}>
               <Outlet />

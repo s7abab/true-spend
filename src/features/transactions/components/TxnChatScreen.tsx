@@ -570,7 +570,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
       <div className="txn-chat-footer">
         <textarea
           className="txn-chat-input"
-          rows={2}
+          rows={1}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Message…"

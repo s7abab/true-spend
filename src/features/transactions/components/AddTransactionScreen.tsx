@@ -248,7 +248,7 @@ export function AddTransactionScreen({
 
   const formScroll = (
     <>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '14px 16px 0' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '14px 16px 0', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
             type="button"
@@ -502,12 +502,14 @@ export function AddTransactionScreen({
         >
           {formScroll}
           {showAiEntry && entryTab === 'ai' && aiChat ? (
-            <TxnChatScreen
-              layout="embedded"
-              {...aiChat}
-              onTransactionsSaved={onClose}
-              onActivityChange={onAiActivity}
-            />
+            <div className="add-screen-chat-pane">
+              <TxnChatScreen
+                layout="embedded"
+                {...aiChat}
+                onTransactionsSaved={onClose}
+                onActivityChange={onAiActivity}
+              />
+            </div>
           ) : null}
         </div>
         {showAiEntry && entryTab === 'ai' ? null : (

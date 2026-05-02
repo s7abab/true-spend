@@ -62,6 +62,36 @@
   background: #fff;
 }
 
+/* AI chat tab: one scroll surface (message list), no outer page growth on input focus */
+.page-scroll.page-scroll--tab-chat {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.tab-outlet-scroll {
+  flex: 1;
+  align-self: stretch;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.tab-outlet-scroll--chat {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.tab-outlet-scroll--chat > * {
+  flex: 1 1 0%;
+  min-height: 0;
+  min-width: 0;
+}
+
 /* ── Sticky app header (title + profile) — respect notch / status bar ── */
 .app-top-bar.screen-header {
   flex-shrink: 0;
@@ -562,6 +592,15 @@ button.txn-row.txn-row-btn:active {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+.add-screen-chat-pane {
+  flex: 1 1 0%;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .add-screen-footer {
