@@ -7,7 +7,7 @@ import type { CategoryRow } from '@/features/categories/types';
 import { geminiTxnChatTurn, formatTxnChatTranscript, type GeminiDraftTransaction } from '@/features/transactions/lib/geminiTxnChat';
 import { matchCategoryRowByHint } from '@/features/transactions/lib/matchCategoryHint';
 import type { TransactionKind } from '@/types/ledger';
-import { currencyPrefix } from '@/utils/money';
+import { currencyPrefix, formatMoney } from '@/utils/money';
 import type { ToastPayload } from '@/shared/components/Toast';
 import type { PersistedChatDraft, PersistedChatTurn } from '@/features/transactions/lib/txnUiLocalStorage';
 import {
@@ -37,6 +37,27 @@ type DraftEdit = Partial<{
   category_id: string;
   resolved_category_label: string;
 }>;
+
+function remapDraftEditsAfterRemoval(
+  prev: Record<string, DraftEdit>,
+  turnId: string,
+  removedIndex: number,
+): Record<string, DraftEdit> {
+  const next: Record<string, DraftEdit> = {};
+  const prefix = `${turnId}:`;
+  for (const [k, v] of Object.entries(prev)) {
+    if (!k.startsWith(prefix)) {
+      next[k] = v;
+      continue;
+    }
+    const idx = Number(k.slice(prefix.length));
+    if (!Number.isFinite(idx)) continue;
+    if (idx === removedIndex) continue;
+    const newIdx = idx > removedIndex ? idx - 1 : idx;
+    next[`${turnId}:${newIdx}`] = v;
+  }
+  return next;
+}
 
 type ChatTurn = {
   id: string;
@@ -341,6 +362,18 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
     }
   }, [apiKey, input, sending, messages, props]);
 
+  const removeDraftAtTurn = useCallback((turnId: string, draftIndex: number) => {
+    if (sending || savingId) return;
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== turnId || !msg.drafts?.length) return msg;
+        const nextDrafts = msg.drafts.filter((_, j) => j !== draftIndex);
+        return nextDrafts.length ? { ...msg, drafts: nextDrafts } : { ...msg, drafts: undefined };
+      }),
+    );
+    setDraftEdits((prev) => remapDraftEditsAfterRemoval(prev, turnId, draftIndex));
+  }, [sending, savingId]);
+
   const saveDrafts = useCallback(
     async (turnId: string, drafts: ChatDraftRow[]) => {
       if (drafts.length === 0 || savingId) return;
@@ -437,122 +470,181 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
           >
             <div className={`txn-chat-bubble txn-chat-bubble--${m.role === 'user' ? 'user' : 'assistant'}`}>{m.text}</div>
             {m.role === 'assistant' && m.drafts && m.drafts.length > 0 ? (
-              <div className="txn-chat-draft-wrap">
+              <div className={`txn-chat-draft-wrap${m.drafts.length >= 2 ? ' txn-chat-draft-wrap--multi' : ''}`}>
                 {(() => {
                   const mergedAll = m.drafts!.map((d, i) => mergeChatDraft(d, draftEdits[`${m.id}:${i}`]));
                   const allIncome = mergedAll.every((x) => x.kind === 'income');
                   const allReady = mergedAll.every((x) => x.amount != null && x.amount > 0);
+                  const multiDraft = m.drafts!.length >= 2;
                   return (
                     <>
                       {m.drafts!.map((d, i) => {
-                  const key = `${m.id}:${i}`;
-                  const display = mergeChatDraft(d, draftEdits[key]);
-                  const catOptions = display.kind === 'income' ? props.catsIncome : props.catsExpense;
-                  return (
-                    <div key={key} className="txn-chat-draft txn-chat-draft--editable">
-                      <div className="txn-chat-draft-title">{display.title}</div>
-                      {display.note ? (
-                        <div className="txn-chat-draft-note" style={{ color: '#6B6B80', fontSize: 12 }}>
-                          {display.note}
-                        </div>
-                      ) : null}
-                      <div className="txn-chat-draft-fields">
-                        <label className="txn-chat-draft-field">
-                          <span className="txn-chat-draft-label">Amount ({cur})</span>
-                          <input
-                            className="txn-chat-draft-input"
-                            type="number"
-                            inputMode="decimal"
-                            min={0}
-                            step="0.01"
-                            placeholder="Required"
-                            value={display.amount == null ? '' : String(display.amount)}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              if (v === '') updateDraftEdit(key, { amount: null });
-                              else {
-                                const n = Number(v);
-                                updateDraftEdit(key, {
-                                  amount: Number.isFinite(n) && n > 0 ? n : null,
-                                });
-                              }
-                            }}
-                          />
-                        </label>
-                        <label className="txn-chat-draft-field">
-                          <span className="txn-chat-draft-label">Date</span>
-                          <input
-                            className="txn-chat-draft-input"
-                            type="date"
-                            value={display.dateYmd}
-                            onChange={(e) => {
-                              const y = e.target.value;
-                              if (/^\d{4}-\d{2}-\d{2}$/.test(y)) updateDraftEdit(key, { dateYmd: y });
-                            }}
-                          />
-                        </label>
-                        <label className="txn-chat-draft-field">
-                          <span className="txn-chat-draft-label">Type</span>
-                          <select
-                            className="txn-chat-draft-input txn-chat-draft-select"
-                            value={display.kind}
-                            onChange={(e) => {
-                              const nk = e.target.value === 'income' ? 'income' : 'expense';
-                              const row = matchCategoryRowByHint('', nk, props.catsExpense, props.catsIncome);
-                              updateDraftEdit(key, {
-                                kind: nk,
-                                category_id: row.id,
-                                resolved_category_label: row.label,
-                              });
+                        const key = `${m.id}:${i}`;
+                        const display = mergeChatDraft(d, draftEdits[key]);
+                        const catOptions = display.kind === 'income' ? props.catsIncome : props.catsExpense;
+                        const removeBtn = (
+                          <button
+                            type="button"
+                            className="txn-chat-draft-remove"
+                            aria-label={`Remove "${display.title}" from this list`}
+                            disabled={Boolean(savingId) || sending}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeDraftAtTurn(m.id, i);
                             }}
                           >
-                            <option value="expense">Expense</option>
-                            <option value="income">Income</option>
-                          </select>
-                        </label>
-                        <label className="txn-chat-draft-field txn-chat-draft-field--wide">
-                          <span className="txn-chat-draft-label">Category</span>
-                          <select
-                            className="txn-chat-draft-input txn-chat-draft-select"
-                            value={display.category_id}
-                            onChange={(e) => {
-                              const id = e.target.value;
-                              const cat = catOptions.find((c) => c.id === id);
-                              if (!cat) return;
-                              updateDraftEdit(key, {
-                                category_id: cat.id,
-                                resolved_category_label: cat.label,
-                              });
-                            }}
-                          >
-                            {catOptions.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                            <IClose size={14} stroke={2.2} />
+                          </button>
+                        );
+                        const noteBlock = display.note ? (
+                          <div className="txn-chat-draft-note" style={{ color: '#6B6B80', fontSize: 12 }}>
+                            {display.note}
+                          </div>
+                        ) : null;
+                        const fields = (
+                          <div className="txn-chat-draft-fields">
+                            <label className="txn-chat-draft-field">
+                              <span className="txn-chat-draft-label">Amount ({cur})</span>
+                              <input
+                                className="txn-chat-draft-input"
+                                type="number"
+                                inputMode="decimal"
+                                min={0}
+                                step="0.01"
+                                placeholder="Required"
+                                value={display.amount == null ? '' : String(display.amount)}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  if (v === '') updateDraftEdit(key, { amount: null });
+                                  else {
+                                    const n = Number(v);
+                                    updateDraftEdit(key, {
+                                      amount: Number.isFinite(n) && n > 0 ? n : null,
+                                    });
+                                  }
+                                }}
+                              />
+                            </label>
+                            <label className="txn-chat-draft-field">
+                              <span className="txn-chat-draft-label">Date</span>
+                              <input
+                                className="txn-chat-draft-input"
+                                type="date"
+                                value={display.dateYmd}
+                                onChange={(e) => {
+                                  const y = e.target.value;
+                                  if (/^\d{4}-\d{2}-\d{2}$/.test(y)) updateDraftEdit(key, { dateYmd: y });
+                                }}
+                              />
+                            </label>
+                            <label className="txn-chat-draft-field">
+                              <span className="txn-chat-draft-label">Type</span>
+                              <select
+                                className="txn-chat-draft-input txn-chat-draft-select"
+                                value={display.kind}
+                                onChange={(e) => {
+                                  const nk = e.target.value === 'income' ? 'income' : 'expense';
+                                  const row = matchCategoryRowByHint('', nk, props.catsExpense, props.catsIncome);
+                                  updateDraftEdit(key, {
+                                    kind: nk,
+                                    category_id: row.id,
+                                    resolved_category_label: row.label,
+                                  });
+                                }}
+                              >
+                                <option value="expense">Expense</option>
+                                <option value="income">Income</option>
+                              </select>
+                            </label>
+                            <label className="txn-chat-draft-field txn-chat-draft-field--wide">
+                              <span className="txn-chat-draft-label">Category</span>
+                              <select
+                                className="txn-chat-draft-input txn-chat-draft-select"
+                                value={display.category_id}
+                                onChange={(e) => {
+                                  const id = e.target.value;
+                                  const cat = catOptions.find((c) => c.id === id);
+                                  if (!cat) return;
+                                  updateDraftEdit(key, {
+                                    category_id: cat.id,
+                                    resolved_category_label: cat.label,
+                                  });
+                                }}
+                              >
+                                {catOptions.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                        );
+                        const amountSummary =
+                          display.amount != null && display.amount > 0
+                            ? formatMoney(display.amount, props.currency)
+                            : 'Amount needed';
+
+                        if (multiDraft) {
+                          return (
+                            <details
+                              key={key}
+                              className="txn-chat-draft txn-chat-draft--editable txn-chat-draft--collapsible"
+                              defaultOpen={i === 0}
+                            >
+                              <summary className="txn-chat-draft-summary">
+                                <span className="txn-chat-draft-chevron" aria-hidden>
+                                  ›
+                                </span>
+                                <span className="txn-chat-draft-summary-main">
+                                  <span className="txn-chat-draft-title txn-chat-draft-title--one-line">{display.title}</span>
+                                  <span className="txn-chat-draft-summary-meta">
+                                    {amountSummary} · {display.resolved_category_label}
+                                  </span>
+                                </span>
+                                {removeBtn}
+                              </summary>
+                              <div className="txn-chat-draft-body">
+                                {noteBlock}
+                                {fields}
+                              </div>
+                            </details>
+                          );
+                        }
+
+                        return (
+                          <div key={key} className="txn-chat-draft txn-chat-draft--editable">
+                            <div className="txn-chat-draft-head">
+                              <div className="txn-chat-draft-title">{display.title}</div>
+                              {removeBtn}
+                            </div>
+                            {noteBlock}
+                            {fields}
+                          </div>
+                        );
+                      })}
+                      <div className="txn-chat-save-row">
+                        <button
+                          type="button"
+                          className="txn-chat-save"
+                          disabled={Boolean(savingId) || sending || !allReady}
+                          onClick={() => void saveDrafts(m.id, m.drafts!)}
+                          style={{
+                            background: allIncome ? '#22A06B' : '#0F0F12',
+                            boxShadow:
+                              savingId === m.id || sending
+                                ? 'none'
+                                : `0 10px 24px -8px ${allIncome ? '#22A06B99' : '#0F0F1299'}`,
+                          }}
+                        >
+                          {savingId === m.id
+                            ? 'Saving…'
+                            : m.drafts!.length === 1
+                              ? 'Save to ledger'
+                              : `Save ${m.drafts!.length} to ledger`}
+                        </button>
                       </div>
-                    </div>
-                  );
-                })}
-                <div className="txn-chat-save-row">
-                  <button
-                    type="button"
-                    className="txn-chat-save"
-                    disabled={Boolean(savingId) || sending || !allReady}
-                    onClick={() => void saveDrafts(m.id, m.drafts!)}
-                    style={{
-                      background: allIncome ? '#22A06B' : '#0F0F12',
-                      boxShadow:
-                        savingId === m.id || sending
-                          ? 'none'
-                          : `0 10px 24px -8px ${allIncome ? '#22A06B99' : '#0F0F1299'}`,
-                    }}
-                  >
-                    {savingId === m.id ? 'Saving…' : `Save ${m.drafts!.length} to ledger`}
-                  </button>
-                </div>
                     </>
                   );
                 })()}

@@ -61,6 +61,10 @@
   margin-top: 2px;
 }
 
+.txn-chat-draft-wrap--multi {
+  gap: 6px;
+}
+
 .txn-chat-draft {
   display: flex;
   flex-direction: column;
@@ -88,6 +92,128 @@
 
 .txn-chat-draft--editable {
   gap: 8px;
+}
+
+.txn-chat-draft-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.txn-chat-draft-head .txn-chat-draft-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.txn-chat-draft-remove {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: -4px -6px -4px 0;
+  border: none;
+  border-radius: 10px;
+  background: rgba(15, 15, 18, 0.06);
+  color: #9b9ba8;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.txn-chat-draft-remove:hover:not(:disabled) {
+  background: rgba(217, 45, 74, 0.12);
+  color: #d92d4a;
+}
+
+.txn-chat-draft-remove:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Collapsed rows when the model returns several items at once */
+.txn-chat-draft--collapsible {
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.txn-chat-draft-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 8px 10px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.txn-chat-draft-summary::-webkit-details-marker {
+  display: none;
+}
+
+.txn-chat-draft-chevron {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #9b9ba8;
+  transition: transform 0.15s ease;
+  transform: rotate(0deg);
+}
+
+.txn-chat-draft--collapsible[open] .txn-chat-draft-chevron {
+  transform: rotate(90deg);
+}
+
+.txn-chat-draft-summary-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.txn-chat-draft-title--one-line {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.txn-chat-draft-summary-meta {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b6b80;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.txn-chat-draft-body {
+  padding: 0 10px 10px;
+  border-top: 1px solid #f0f0f5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.txn-chat-draft--collapsible .txn-chat-draft-fields {
+  margin-top: 2px;
+}
+
+.txn-chat-draft--collapsible .txn-chat-draft-input {
+  min-height: 40px;
+  padding: 7px 9px;
 }
 
 .txn-chat-draft-fields {
