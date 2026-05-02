@@ -244,6 +244,17 @@ export type TxnChatShellProps = {
     note: string | null;
     occurred_at: string;
   }) => Promise<{ data: unknown; error: Error | null }>;
+  /** Preferred for AI chat: one round-trip so every line is persisted together. */
+  addTransactions: (
+    rows: Array<{
+      kind: string;
+      category_id: string | null;
+      amount: number;
+      title: string;
+      note: string | null;
+      occurred_at: string;
+    }>,
+  ) => Promise<{ data: unknown; error: Error | null }>;
   currency: string;
   combinedError: string | null;
   retrying: boolean;
@@ -377,9 +388,8 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
         txsForDrafts.length > 0
           ? buildChatDrafts(txsForDrafts, props.catsExpense, props.catsIncome, props.catsTransfer)
           : undefined;
-      // Avoid surfacing full draft forms when nothing is saveable yet (model should ask in reply instead).
-      const drafts =
-        built && built.some((d) => d.amount != null && d.amount > 0) ? built : undefined;
+      // Show every parsed row so users can fill missing amounts on the same screen as priced lines.
+      const drafts = built && built.length > 0 ? built : undefined;
       setMessages((prev) => [
         ...prev,
         { id: `a-${Date.now()}`, role: 'assistant', text: result.reply, drafts },
@@ -427,17 +437,16 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
       }
       setSavingId(turnId);
       try {
-        for (const d of merged) {
-          const res = await props.addTransaction({
-            kind: d.kind,
-            category_id: d.category_id,
-            amount: d.amount!,
-            title: d.title,
-            note: d.note?.trim() || null,
-            occurred_at: d.occurred_at,
-          });
-          if (res.error) throw res.error;
-        }
+        const batch = merged.map((d) => ({
+          kind: d.kind,
+          category_id: d.category_id,
+          amount: d.amount!,
+          title: d.title,
+          note: d.note?.trim() || null,
+          occurred_at: d.occurred_at,
+        }));
+        const res = await props.addTransactions(batch);
+        if (res.error) throw res.error;
         const allInc = merged.every((x) => x.kind === 'income');
         const allXfer = merged.every((x) => x.kind === 'transfer');
         props.setToast({

@@ -9,6 +9,20 @@ import { normalizeTxnChatJson, parseJsonFromModelText } from '@/features/transac
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
+/** OpenRouter / OpenAI-style message content: string or array of { type, text } parts. */
+function textFromChatMessageContent(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  const parts: string[] = [];
+  for (const part of content) {
+    if (part && typeof part === 'object' && 'text' in part) {
+      const t = (part as { text?: unknown }).text;
+      if (typeof t === 'string') parts.push(t);
+    }
+  }
+  return parts.join('');
+}
+
 export type OpenRouterTxnChatProviderOptions = {
   apiKey: string;
   /** OpenRouter model slug (see https://openrouter.ai/models); app default is google/gemini-2.0-flash-001 */
@@ -77,7 +91,7 @@ export function createOpenRouterTxnChatProvider(opts: OpenRouterTxnChatProviderO
           ? (choices[0] as Record<string, unknown>)
           : null;
       const message = first?.message as Record<string, unknown> | undefined;
-      const rawText = typeof message?.content === 'string' ? message.content : '';
+      const rawText = textFromChatMessageContent(message?.content);
       if (!rawText.trim()) {
         throw new Error('Empty response from OpenRouter');
       }

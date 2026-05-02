@@ -102,6 +102,7 @@ export type ShellRoutesProps = {
   categoriesError: CatApi['error'];
   home: HomeMetrics;
   addTransaction: TxnApi['addTransaction'];
+  addTransactions: TxnApi['addTransactions'];
   updateTransaction: TxnApi['updateTransaction'];
   removeTransaction: TxnApi['removeTransaction'];
   exportAllTransactions: TxnApi['exportAllTransactions'];
@@ -126,6 +127,7 @@ function AiChatTabRoute(props: ShellRoutesProps) {
       catsIncome={props.catsIncome}
       catsTransfer={props.catsTransfer}
       addTransaction={props.addTransaction}
+      addTransactions={props.addTransactions}
       currency={props.currency}
       combinedError={props.combinedError}
       retrying={props.retrying}
@@ -243,7 +245,10 @@ function TabShellLayout(props: ShellRoutesProps) {
               }}
               onClick={goTab}
             >
-              <Icon size={22} stroke={activeTab === t.id ? 2.3 : 1.8} />
+              <Icon
+                size={t.id === 'chat' ? 30 : 22}
+                stroke={activeTab === t.id ? 2.35 : t.id === 'chat' ? 2.05 : 1.8}
+              />
               {t.label}
             </button>
           );

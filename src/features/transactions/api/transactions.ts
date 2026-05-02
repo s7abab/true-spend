@@ -149,6 +149,14 @@ export async function insertTransaction(row: TransactionInsert) {
   return supabase.from('transactions').insert(row).select().maybeSingle();
 }
 
+/** Insert many rows in one request (AI chat save). Avoids sequential mutation/client edge cases. */
+export async function insertTransactions(rows: TransactionInsert[]) {
+  if (rows.length === 0) {
+    return { data: [] as DbTransactionRow[] | null, error: null as PostgrestError | null };
+  }
+  return supabase.from('transactions').insert(rows).select();
+}
+
 export type TransactionUpdateFields = {
   kind: string;
   category_id: string | null;

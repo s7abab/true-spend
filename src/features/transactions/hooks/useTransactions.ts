@@ -119,6 +119,15 @@ export function useTransactions() {
     onSuccess: invalidateTransactions,
   });
 
+  const insertManyMutation = useMutation({
+    mutationFn: async (rows: transactionsApi.TransactionInsert[]) => {
+      const out = await transactionsApi.insertTransactions(rows);
+      if (out.error) throw out.error;
+      return out.data ?? [];
+    },
+    onSuccess: invalidateTransactions,
+  });
+
   const updateMutation = useMutation({
     mutationFn: async (args: {
       uid: string;
@@ -184,6 +193,38 @@ export function useTransactions() {
       }
     },
     [user, userId, insertMutation],
+  );
+
+  type AddTxnFields = {
+    kind: string;
+    category_id: string | null;
+    amount: number;
+    title: string;
+    note: string | null;
+    occurred_at: string;
+  };
+
+  const addTransactions = useCallback(
+    async (rows: AddTxnFields[]) => {
+      if (!userId || !user) return { error: new Error('not signed in') as Error, data: null };
+      if (rows.length === 0) return { data: [] as unknown[], error: null as null };
+      const payloads: transactionsApi.TransactionInsert[] = rows.map((r) => ({
+        user_id: user.id,
+        kind: r.kind,
+        category_id: r.category_id ?? null,
+        amount: r.amount,
+        title: r.title || null,
+        note: r.note || null,
+        occurred_at: r.occurred_at || new Date().toISOString(),
+      }));
+      try {
+        const data = await insertManyMutation.mutateAsync(payloads);
+        return { data, error: null as null };
+      } catch (e) {
+        return { data: null, error: e instanceof Error ? e : new Error(String(e)) };
+      }
+    },
+    [user, userId, insertManyMutation],
   );
 
   const updateTransaction = useCallback(
@@ -264,6 +305,7 @@ export function useTransactions() {
     refetch: refetchTransactions,
     refetchTransactions,
     addTransaction,
+    addTransactions,
     updateTransaction,
     removeTransaction,
     exportAllTransactions,

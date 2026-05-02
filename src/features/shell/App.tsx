@@ -57,6 +57,7 @@ function AuthedApp({ user }: { user: User | null }) {
   const {
     home,
     addTransaction,
+    addTransactions,
     updateTransaction,
     removeTransaction,
     exportAllTransactions,
@@ -115,6 +116,7 @@ function AuthedApp({ user }: { user: User | null }) {
     categoriesError,
     home,
     addTransaction,
+    addTransactions,
     updateTransaction,
     removeTransaction,
     exportAllTransactions,
