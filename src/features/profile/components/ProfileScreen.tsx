@@ -22,8 +22,13 @@ function downloadJson(filename: string, data: unknown): void {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  a.rel = 'noopener';
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  // Revoke after the download has bound to the blob URL; immediate revoke can cancel the save dialog.
+  window.setTimeout(() => URL.revokeObjectURL(url), 15_000);
 }
 
 function AvatarCircle({ url, initials, size }: { url: string | null; initials: string; size: number }) {
