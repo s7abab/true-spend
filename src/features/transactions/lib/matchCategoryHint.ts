@@ -20,6 +20,13 @@ function pickList(
   return categoriesTransfer;
 }
 
+/** When the model omits a label or nothing matches, avoid defaulting to the first seed category (Food). */
+function pickFallbackCategoryRow(list: CategoryRow[]): CategoryRow {
+  const other = list.find((c) => c.label.trim().toLowerCase() === 'other');
+  if (other) return other;
+  return list[list.length - 1]!;
+}
+
 /**
  * Picks the best category row for a free-text hint from the model (label synonym).
  */
@@ -41,7 +48,7 @@ export function matchCategoryRowByHint(
     );
   }
   const h = hint.trim().toLowerCase();
-  if (!h) return list[0]!;
+  if (!h) return pickFallbackCategoryRow(list);
 
   const exact = list.find((c) => c.label.toLowerCase() === h);
   if (exact) return exact;
@@ -52,7 +59,7 @@ export function matchCategoryRowByHint(
   if (contains) return contains;
 
   const hintTokens = new Set(tokenize(h));
-  let best: CategoryRow = list[0]!;
+  let best: CategoryRow = pickFallbackCategoryRow(list);
   let bestScore = 0;
   for (const c of list) {
     const label = c.label.toLowerCase();

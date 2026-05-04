@@ -81,7 +81,7 @@ ${inc}
 **User transfer categories** — for kind "transfer", same rules:
 ${xfer}
 
-Never invent, paraphrase, or substitute a category name. If unsure, omit \`category_label\` (the app will pick a default).
+Never invent, paraphrase, or substitute a category name. If unsure, omit \`category_label\` (the app uses **Other** for that kind).
 
 Kind rules (summary):
 - **expense**: real money spent with no expectation of return — food, transport, shopping, bills, subscriptions, entertainment, EMI payments (log full EMI as expense; do not split principal/interest), insurance premiums, fees.
