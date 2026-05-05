@@ -1,5 +1,8 @@
 /* ── App shell: full-bleed mobile; max-width only on wide viewports ── */
 .app-shell {
+  --bottom-nav-height: 68px;
+  --bottom-nav-offset: max(8px, env(safe-area-inset-bottom, 0px));
+
   width: 100%;
   max-width: none;
   flex: 1;
@@ -50,7 +53,7 @@
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   /* extra bottom padding for floating nav + safe area */
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--bottom-nav-height) + var(--bottom-nav-offset) + 16px);
 }
 
 /* Full-screen flows (add transaction): no floating nav gutter — footer handles safe-area */
@@ -155,7 +158,7 @@
   -webkit-user-select: none;
   touch-action: manipulation;
   position: fixed;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  bottom: var(--bottom-nav-offset);
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 28px);
@@ -164,7 +167,7 @@
   align-items: center;
   z-index: 30;
   padding: 6px 4px;
-  min-height: 68px;
+  min-height: var(--bottom-nav-height);
   border-radius: 28px;
   /* overflow visible: FAB uses negative margin-top and must not be clipped */
   isolation: isolate;
