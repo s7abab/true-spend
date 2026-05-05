@@ -276,15 +276,17 @@ export function AddTransactionScreen({
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '14px 16px 0', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            type="button"
-            disabled={busy || (showAiEntry && entryTab === 'ai' && aiBusy)}
-            onClick={onClose}
-            aria-label="Close"
-            className="sheet-close-btn"
-          >
-            <IClose size={16} />
-          </button>
+          {!asPage ? (
+            <button
+              type="button"
+              disabled={busy || (showAiEntry && entryTab === 'ai' && aiBusy)}
+              onClick={onClose}
+              aria-label="Close"
+              className="sheet-close-btn"
+            >
+              <IClose size={16} />
+            </button>
+          ) : null}
           {showAiEntry ? (
             <div className="seg" style={{ flex: 1, minWidth: 0 }}>
               <div

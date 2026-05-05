@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ICalendar, IClose } from '@/shared/components/Icons';
+import { ICalendar, IClose, ISparkle } from '@/shared/components/Icons';
 import { parseDateInput, toDateInputValue } from '@/features/history/utils/dateRange';
 import { formatDateLabel } from '@/utils/dateLabel';
 import { DataErrorBanner } from '@/shared/components/DataErrorBanner';
@@ -493,9 +493,9 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
             flexShrink: 0,
           }}
         >
-          <button type="button" disabled={busy} onClick={onClose} className="sheet-close-btn" aria-label="Close">
-            <IClose size={16} />
-          </button>
+          <span className="txn-chat-title-icon" aria-hidden>
+            <ISparkle size={18} stroke={2.2} />
+          </span>
           <div style={{ flex: 1, fontSize: 18, fontWeight: 700, letterSpacing: -0.4, color: '#0F0F12' }}>
             {TXN_ASSISTANT_DISPLAY_NAME}
           </div>
