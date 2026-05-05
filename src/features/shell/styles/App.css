@@ -1,6 +1,6 @@
 /* ── App shell: full-bleed mobile; max-width only on wide viewports ── */
 .app-shell {
-  --bottom-nav-height: 68px;
+  --bottom-nav-height: 62px;
   --bottom-nav-offset: max(8px, env(safe-area-inset-bottom, 0px));
 
   width: 100%;
@@ -170,9 +170,9 @@
   display: flex;
   align-items: center;
   z-index: 30;
-  padding: 6px 4px;
+  padding: 5px 4px;
   min-height: var(--bottom-nav-height);
-  border-radius: 28px;
+  border-radius: 24px;
   /* overflow visible: FAB uses negative margin-top and must not be clipped */
   isolation: isolate;
   background: linear-gradient(
@@ -221,15 +221,15 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  min-height: 48px;
+  gap: 3px;
+  min-height: 44px;
   min-width: 0;
-  padding: 10px 2px;
+  padding: 8px 2px;
   margin: 0;
   border: none;
   background: transparent;
   font-family: inherit;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
   letter-spacing: 0.1px;
   color: #0f0f12;
@@ -237,7 +237,7 @@
   -webkit-tap-highlight-color: transparent;
   /* Do not transition `background`: gradient ↔ transparent interpolates as gray in many engines. */
   transition: color 180ms ease, box-shadow 180ms ease;
-  border-radius: 16px;
+  border-radius: 14px;
 }
 .nav-btn:focus {
   outline: none;
@@ -297,14 +297,14 @@
 .nav-fab {
   position: relative;
   z-index: 1;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   display: grid;
   place-items: center;
   color: #fff;
-  margin-top: -28px;
+  margin-top: -25px;
   background: linear-gradient(
     145deg,
     rgba(28, 28, 34, 0.92) 0%,
