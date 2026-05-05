@@ -122,13 +122,38 @@ function RouteFallback() {
 function BottomNav(props: Pick<ShellRoutesProps, 'canOpenAdd' | 'categoriesLoading' | 'categoriesError' | 'setToast'>) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [inputFocused, setInputFocused] = useState(false);
   const activeTab = location.pathname.startsWith('/add') || location.pathname.startsWith('/edit/')
     ? null
     : tabFromPathname(location.pathname);
   const addActive = location.pathname.startsWith('/add');
 
+  useEffect(() => {
+    const isInputTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+    };
+    const onFocusIn = (e: FocusEvent) => setInputFocused(isInputTarget(e.target));
+    const onFocusOut = () => {
+      window.setTimeout(() => setInputFocused(isInputTarget(document.activeElement)), 0);
+    };
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+    };
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('bottom-nav-input-focused', inputFocused);
+    return () => {
+      document.documentElement.classList.remove('bottom-nav-input-focused');
+    };
+  }, [inputFocused]);
+
   return (
-    <nav className="bottom-nav" aria-label="Main">
+    <nav className={`bottom-nav${inputFocused ? ' bottom-nav--input-focused' : ''}`} aria-label="Main">
       {TABS.map((t) => {
         if (!t) {
           return (
