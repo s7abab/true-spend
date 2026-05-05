@@ -119,6 +119,79 @@ function RouteFallback() {
   return <AppBootLoading />;
 }
 
+function BottomNav(props: Pick<ShellRoutesProps, 'canOpenAdd' | 'categoriesLoading' | 'categoriesError' | 'setToast'>) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = location.pathname.startsWith('/add') || location.pathname.startsWith('/edit/')
+    ? null
+    : tabFromPathname(location.pathname);
+  const addActive = location.pathname.startsWith('/add');
+
+  return (
+    <nav className="bottom-nav" aria-label="Main">
+      {TABS.map((t) => {
+        if (!t) {
+          return (
+            <div key="fab" className="nav-fab-wrap">
+              <button
+                type="button"
+                className={`nav-fab${addActive ? ' active' : ''}`}
+                onClick={() => {
+                  if (addActive) return;
+                  if (!props.canOpenAdd) {
+                    const msg = props.categoriesLoading
+                      ? 'Still loading categories…'
+                      : props.categoriesError
+                        ? 'Fix the data connection, then try again.'
+                        : 'Add a category first (avatar → Profile → Categories).';
+                    props.setToast({ id: Date.now(), kind: 'error', message: msg });
+                    setTimeout(() => props.setToast(null), 3200);
+                    return;
+                  }
+                  navigate('/add');
+                }}
+                aria-label={props.canOpenAdd ? 'Add transaction' : 'Add unavailable'}
+                aria-current={addActive ? 'page' : undefined}
+                disabled={!props.canOpenAdd}
+                style={{ opacity: props.canOpenAdd ? 1 : 0.45 }}
+              >
+                <IPlus size={26} stroke={2.4} />
+              </button>
+            </div>
+          );
+        }
+        const Icon = t.Icon;
+        const tabActive = activeTab === t.id;
+        const goTab = () => {
+          if (location.pathname === t.to) return;
+          void navigate(t.to);
+        };
+        return (
+          <button
+            key={t.id}
+            type="button"
+            data-tab={t.id}
+            className={`nav-btn${tabActive ? ' active' : ''}`}
+            aria-current={tabActive ? 'page' : undefined}
+            /* Touch: navigate on pointerdown so the first tap is not lost to iOS click delays / SVG hit-target quirks. */
+            onPointerDown={(e) => {
+              if (e.pointerType !== 'touch') return;
+              goTab();
+            }}
+            onClick={goTab}
+          >
+            <Icon
+              size={t.id === 'chat' ? 30 : 22}
+              stroke={tabActive ? 2.35 : t.id === 'chat' ? 2.05 : 1.8}
+            />
+            {t.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 function ShellDocumentTitle() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -142,7 +215,7 @@ function AiChatRoute(props: ShellRoutesProps) {
 
   return (
     <div className="app-shell">
-      <div className="page-scroll page-scroll--no-nav">
+      <div className="page-scroll">
         <div className="app-main">
           <div
             style={{
@@ -186,6 +259,7 @@ function AiChatRoute(props: ShellRoutesProps) {
           </div>
         </div>
       </div>
+      <BottomNav {...props} />
     </div>
   );
 }
@@ -236,65 +310,7 @@ function TabShellLayout(props: ShellRoutesProps) {
         </div>
       </div>
 
-      <nav className="bottom-nav" aria-label="Main">
-        {TABS.map((t) => {
-          if (!t) {
-            return (
-              <div key="fab" className="nav-fab-wrap">
-                <button
-                  type="button"
-                  className="nav-fab"
-                  onClick={() => {
-                    if (!props.canOpenAdd) {
-                      const msg = props.categoriesLoading
-                        ? 'Still loading categories…'
-                        : props.categoriesError
-                          ? 'Fix the data connection, then try again.'
-                          : 'Add a category first (avatar → Profile → Categories).';
-                      props.setToast({ id: Date.now(), kind: 'error', message: msg });
-                      setTimeout(() => props.setToast(null), 3200);
-                      return;
-                    }
-                    navigate('/add');
-                  }}
-                  aria-label={props.canOpenAdd ? 'Add transaction' : 'Add unavailable'}
-                  disabled={!props.canOpenAdd}
-                  style={{ opacity: props.canOpenAdd ? 1 : 0.45 }}
-                >
-                  <IPlus size={26} stroke={2.4} />
-                </button>
-              </div>
-            );
-          }
-          const Icon = t.Icon;
-          const tabActive = activeTab === t.id;
-          const goTab = () => {
-            if (location.pathname === t.to) return;
-            void navigate(t.to);
-          };
-          return (
-            <button
-              key={t.id}
-              type="button"
-              data-tab={t.id}
-              className={`nav-btn${tabActive ? ' active' : ''}`}
-              aria-current={tabActive ? 'page' : undefined}
-              /* Touch: navigate on pointerdown so the first tap is not lost to iOS click delays / SVG hit-target quirks. */
-              onPointerDown={(e) => {
-                if (e.pointerType !== 'touch') return;
-                goTab();
-              }}
-              onClick={goTab}
-            >
-              <Icon
-                size={t.id === 'chat' ? 30 : 22}
-                stroke={activeTab === t.id ? 2.35 : t.id === 'chat' ? 2.05 : 1.8}
-              />
-              {t.label}
-            </button>
-          );
-        })}
-      </nav>
+      <BottomNav {...props} />
     </div>
   );
 }
@@ -351,7 +367,7 @@ function AddTransactionRoute(props: ShellRoutesProps) {
 
   return (
     <div className="app-shell">
-      <div className="page-scroll page-scroll--no-nav">
+      <div className="page-scroll">
         <DataErrorBanner message={props.combinedError} onRetry={props.onRetryData} busy={props.retrying} />
         <div className="app-main">
           <div
@@ -392,6 +408,7 @@ function AddTransactionRoute(props: ShellRoutesProps) {
           </div>
         </div>
       </div>
+      <BottomNav {...props} />
     </div>
   );
 }
@@ -505,7 +522,7 @@ function EditTransactionRoute(props: ShellRoutesProps) {
 
   return (
     <div className="app-shell">
-      <div className="page-scroll page-scroll--no-nav">
+      <div className="page-scroll">
         <DataErrorBanner message={props.combinedError} onRetry={props.onRetryData} busy={props.retrying} />
         <div className="app-main">
           <div
@@ -546,6 +563,7 @@ function EditTransactionRoute(props: ShellRoutesProps) {
           </div>
         </div>
       </div>
+      <BottomNav {...props} />
     </div>
   );
 }

@@ -429,7 +429,7 @@ export function AddTransactionScreen({
               >
                 <IconCmp size={13} stroke={2.2} />
               </span>
-              {c.label}
+              <span className="cat-btn-label">{c.label}</span>
             </button>
           );
         })}
