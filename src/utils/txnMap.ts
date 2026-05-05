@@ -9,6 +9,7 @@ export type DbTransactionRow = {
   title?: string | null;
   note?: string | null;
   occurred_at?: string | null;
+  created_at?: string | null;
 };
 
 export type MappedTxn = {
@@ -19,12 +20,15 @@ export type MappedTxn = {
   title: string;
   note: string;
   occurred_at: string | undefined;
+  created_at: string | undefined;
   occurredDate: Date;
+  createdDate: Date;
   time: string;
 };
 
 export function mapTxnRow(row: DbTransactionRow): MappedTxn {
   const occurredAt = row.occurred_at ? new Date(row.occurred_at) : new Date();
+  const createdAt = row.created_at ? new Date(row.created_at) : occurredAt;
   return {
     id: row.id,
     kind:
@@ -34,7 +38,9 @@ export function mapTxnRow(row: DbTransactionRow): MappedTxn {
     title: row.title || '',
     note: row.note || '',
     occurred_at: row.occurred_at ?? undefined,
+    created_at: row.created_at ?? undefined,
     occurredDate: occurredAt,
+    createdDate: createdAt,
     time: formatDateLabel(occurredAt),
   };
 }

@@ -4,7 +4,7 @@ import type { MappedTxn } from '@/utils/txnMap';
 /** Stable `YYYY-MM-DD` in local calendar for grouping. */
 export function dayKeyFromTxn(txn: MappedTxn): string {
   const d =
-    txn.occurredDate instanceof Date ? txn.occurredDate : new Date(txn.occurred_at || 0);
+    txn.createdDate instanceof Date ? txn.createdDate : new Date(txn.created_at || txn.occurred_at || 0);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -19,14 +19,14 @@ export function headerForDayKey(dayKey: string): string {
 }
 
 function txnTime(t: MappedTxn): number {
-  return t.occurredDate instanceof Date
-    ? t.occurredDate.getTime()
-    : new Date(t.occurred_at || 0).getTime();
+  return t.createdDate instanceof Date
+    ? t.createdDate.getTime()
+    : new Date(t.created_at || t.occurred_at || 0).getTime();
 }
 
 export type DayGroup = { dayKey: string; header: string; list: MappedTxn[] };
 
-/** Groups by calendar day, newest day first; within each day, newest first. */
+/** Groups by creation day, newest created transactions first. */
 export function groupTxnsByDay(txns: MappedTxn[]): DayGroup[] {
   const map = new Map<string, MappedTxn[]>();
   for (const t of txns) {

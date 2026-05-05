@@ -289,8 +289,8 @@ export function useTransactions() {
       const batch = (data as DbTransactionRow[]) || [];
       if (!batch.length) break;
       out.push(...batch.map((row) => mapTxnRow(row)));
-      const last = batch[batch.length - 1] as { occurred_at: string; id: string };
-      cursor = { occurred_at: last.occurred_at, id: last.id };
+      const last = batch[batch.length - 1] as { created_at: string; id: string };
+      cursor = { created_at: last.created_at, id: last.id };
       if (batch.length < 100) break;
     }
     return out;

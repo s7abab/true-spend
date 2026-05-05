@@ -65,8 +65,8 @@ export function useStatsDetailTransactions(filter: StatsDetailFilter | null) {
     getNextPageParam: (lastPage) => {
       if (!lastPage.length || lastPage.length < PAGE_SIZE) return undefined;
       const last = lastPage[lastPage.length - 1]!;
-      if (!last.occurred_at || !last.id) return undefined;
-      return { occurred_at: last.occurred_at, id: last.id };
+      if (!last.created_at || !last.id) return undefined;
+      return { created_at: last.created_at, id: last.id };
     },
   });
 

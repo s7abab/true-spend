@@ -73,9 +73,9 @@ export async function fetchPeriodTimeBuckets(
 export async function listRecentTransactions(userId: string, limit = 5, opts: { signal?: AbortSignal } = {}) {
   const q = supabase
     .from('transactions')
-    .select('id, kind, category_id, amount, title, note, occurred_at')
+    .select('id, kind, category_id, amount, title, note, occurred_at, created_at')
     .eq('user_id', userId)
-    .order('occurred_at', { ascending: false })
+    .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(Math.min(Math.max(limit, 1), 50));
   return withSignal(q, opts.signal);
@@ -88,7 +88,7 @@ export async function fetchTransactionById(
 ): Promise<{ data: DbTransactionRow | null; error: PostgrestError | null }> {
   const q = supabase
     .from('transactions')
-    .select('id, kind, category_id, amount, title, note, occurred_at')
+    .select('id, kind, category_id, amount, title, note, occurred_at, created_at')
     .eq('user_id', userId)
     .eq('id', id)
     .maybeSingle();
@@ -98,7 +98,7 @@ export async function fetchTransactionById(
   };
 }
 
-export type TxnPageCursor = { occurred_at: string; id: string } | null;
+export type TxnPageCursor = { created_at: string; id: string } | null;
 
 export type FetchTransactionsPageOpts = {
   limit?: number;
@@ -121,7 +121,7 @@ export async function fetchTransactionsPage(opts: FetchTransactionsPageOpts) {
   const cur = opts.cursor;
   const q = supabase.rpc('transactions_page', {
     p_limit: limit,
-    p_after_occurred: cur?.occurred_at ?? null,
+    p_after_created: cur?.created_at ?? null,
     p_after_id: cur?.id ?? null,
     p_kind: opts.kind === 'all' ? 'all' : opts.kind || 'all',
     p_search: opts.search?.trim() ? opts.search.trim() : null,
