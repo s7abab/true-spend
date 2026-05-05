@@ -160,7 +160,7 @@
 .bottom-nav {
   user-select: none;
   -webkit-user-select: none;
-  touch-action: manipulation;
+  touch-action: none;
   position: fixed;
   bottom: var(--bottom-nav-offset);
   left: 50%;
@@ -236,7 +236,7 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   /* Do not transition `background`: gradient ↔ transparent interpolates as gray in many engines. */
-  transition: color 180ms ease, box-shadow 180ms ease;
+  transition: color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
   border-radius: 14px;
 }
 .nav-btn:focus {
@@ -252,6 +252,7 @@
 }
 .nav-btn.active {
   color: #0f0f12;
+  transform: translateY(-1px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.85),
     0 2px 10px rgba(15, 15, 18, 0.06);

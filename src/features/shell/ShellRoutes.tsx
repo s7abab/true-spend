@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import {
   Navigate,
   Outlet,
@@ -123,6 +123,9 @@ function BottomNav(props: Pick<ShellRoutesProps, 'canOpenAdd' | 'categoriesLoadi
   const location = useLocation();
   const navigate = useNavigate();
   const [inputFocused, setInputFocused] = useState(false);
+  const touchPathRef = useRef<string | null>(null);
+  const touchDraggingRef = useRef(false);
+  const [touchPreviewPath, setTouchPreviewPath] = useState<string | null>(null);
   const activeTab = location.pathname.startsWith('/add') || location.pathname.startsWith('/edit/')
     ? null
     : tabFromPathname(location.pathname);
@@ -152,25 +155,87 @@ function BottomNav(props: Pick<ShellRoutesProps, 'canOpenAdd' | 'categoriesLoadi
     };
   }, [inputFocused]);
 
+  const showAddUnavailable = useCallback(() => {
+    const msg = props.categoriesLoading
+      ? 'Still loading categories…'
+      : props.categoriesError
+        ? 'Fix the data connection, then try again.'
+        : 'Add a category first (avatar → Profile → Categories).';
+    props.setToast({ id: Date.now(), kind: 'error', message: msg });
+    setTimeout(() => props.setToast(null), 3200);
+  }, [props]);
+
+  const commitNavPath = useCallback(
+    (path: string | null) => {
+      if (!path) return;
+      if (path === '/add') {
+        if (addActive) return;
+        if (!props.canOpenAdd) {
+          showAddUnavailable();
+          return;
+        }
+      }
+      if (location.pathname !== path) void navigate(path);
+    },
+    [addActive, location.pathname, navigate, props.canOpenAdd, showAddUnavailable],
+  );
+
+  const previewNavPath = (path: string | null) => {
+    if (touchPathRef.current === path) return;
+    touchPathRef.current = path;
+    setTouchPreviewPath(path);
+  };
+
+  const endTouchNav = (commit: boolean) => {
+    const path = touchPathRef.current;
+    touchDraggingRef.current = false;
+    touchPathRef.current = null;
+    setTouchPreviewPath(null);
+    if (commit) commitNavPath(path);
+  };
+
+  const navPathAtPoint = (clientX: number, clientY: number) => {
+    const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    return (el?.closest('[data-nav-to]') as HTMLElement | null)?.dataset.navTo ?? null;
+  };
+
   return (
-    <nav className={`bottom-nav${inputFocused ? ' bottom-nav--input-focused' : ''}`} aria-label="Main">
+    <nav
+      className={`bottom-nav${inputFocused ? ' bottom-nav--input-focused' : ''}`}
+      aria-label="Main"
+      onPointerDown={(e) => {
+        if (e.pointerType !== 'touch') return;
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        touchDraggingRef.current = true;
+        previewNavPath(navPathAtPoint(e.clientX, e.clientY));
+      }}
+      onPointerMove={(e) => {
+        if (e.pointerType !== 'touch') return;
+        if (!touchDraggingRef.current) return;
+        previewNavPath(navPathAtPoint(e.clientX, e.clientY));
+      }}
+      onPointerUp={(e) => {
+        if (e.pointerType !== 'touch') return;
+        endTouchNav(true);
+      }}
+      onPointerCancel={(e) => {
+        if (e.pointerType !== 'touch') return;
+        endTouchNav(false);
+      }}
+    >
       {TABS.map((t) => {
         if (!t) {
+          const fabActive = touchPreviewPath === '/add' || (!touchPreviewPath && addActive);
           return (
-            <div key="fab" className="nav-fab-wrap">
+            <div key="fab" className="nav-fab-wrap" data-nav-to="/add">
               <button
                 type="button"
-                className={`nav-fab${addActive ? ' active' : ''}`}
+                className={`nav-fab${fabActive ? ' active' : ''}`}
                 onClick={() => {
                   if (addActive) return;
                   if (!props.canOpenAdd) {
-                    const msg = props.categoriesLoading
-                      ? 'Still loading categories…'
-                      : props.categoriesError
-                        ? 'Fix the data connection, then try again.'
-                        : 'Add a category first (avatar → Profile → Categories).';
-                    props.setToast({ id: Date.now(), kind: 'error', message: msg });
-                    setTimeout(() => props.setToast(null), 3200);
+                    showAddUnavailable();
                     return;
                   }
                   navigate('/add');
@@ -186,8 +251,10 @@ function BottomNav(props: Pick<ShellRoutesProps, 'canOpenAdd' | 'categoriesLoadi
           );
         }
         const Icon = t.Icon;
-        const tabActive = activeTab === t.id;
+        const tabActive = touchPreviewPath === t.to || (!touchPreviewPath && activeTab === t.id);
+        const currentTab = activeTab === t.id;
         const goTab = () => {
+          if (touchDraggingRef.current) return;
           if (location.pathname === t.to) return;
           void navigate(t.to);
         };
@@ -195,14 +262,10 @@ function BottomNav(props: Pick<ShellRoutesProps, 'canOpenAdd' | 'categoriesLoadi
           <button
             key={t.id}
             type="button"
+            data-nav-to={t.to}
             data-tab={t.id}
             className={`nav-btn${tabActive ? ' active' : ''}`}
-            aria-current={tabActive ? 'page' : undefined}
-            /* Touch: navigate on pointerdown so the first tap is not lost to iOS click delays / SVG hit-target quirks. */
-            onPointerDown={(e) => {
-              if (e.pointerType !== 'touch') return;
-              goTab();
-            }}
+            aria-current={currentTab ? 'page' : undefined}
             onClick={goTab}
           >
             <Icon
