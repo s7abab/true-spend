@@ -23,6 +23,7 @@ import {
 } from '@/features/transactions/lib/txnUiLocalStorage';
 import { TXN_ASSISTANT_DISPLAY_NAME } from '@/features/transactions/lib/txnAssistantDisplayName';
 import { TxnChatImportBar, type TxnChatImportBarHandle } from '@/features/transactions/components/TxnChatImportBar';
+import { MoneyHighlightReels } from '@/features/transactions/components/MoneyHighlightReels';
 import '@/features/transactions/styles/TxnChatScreen.css';
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -289,6 +290,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
   const [sending, setSending] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [importBusy, setImportBusy] = useState(false);
+  const [showHighlight, setShowHighlight] = useState(false);
 
   const txnAi = useMemo(() => resolveTxnChatFromEnv(), []);
 
@@ -340,9 +342,7 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
     el.scrollTop = el.scrollHeight;
   }, [messages, sending]);
 
-  const onClose = useCallback(() => {
-    if (!sending && !savingId) navigate(-1);
-  }, [navigate, sending, savingId]);
+
 
   const finishSave = useCallback(() => {
     if (onTransactionsSaved) onTransactionsSaved();
@@ -479,7 +479,19 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
 
   const cur = currencyPrefix(props.currency);
 
+  const geminiKey = import.meta.env.VITE_GEMINI_API_KEY?.trim() ?? '';
+  const allCategories = [...props.catsExpense, ...props.catsIncome, ...props.catsTransfer];
+
   return (
+    <>
+    {showHighlight && (
+      <MoneyHighlightReels
+        allCategories={allCategories}
+        currency={props.currency}
+        geminiApiKey={geminiKey}
+        onClose={() => setShowHighlight(false)}
+      />
+    )}
     <div className={`txn-chat-page${layout === 'embedded' ? ' txn-chat-page--embedded' : ''}`}>
       {layout === 'page' ? (
         <div
@@ -500,6 +512,16 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
           <div style={{ flex: 1, fontSize: 18, fontWeight: 700, letterSpacing: -0.4, color: '#0F0F12' }}>
             {TXN_ASSISTANT_DISPLAY_NAME}
           </div>
+          <button
+            type="button"
+            id="highlight-reels-btn"
+            className="txn-chat-highlight-btn"
+            aria-label="View money highlights"
+            onClick={() => setShowHighlight(true)}
+          >
+            <span className="txn-chat-highlight-btn-dot" aria-hidden />
+            Highlight
+          </button>
         </div>
       ) : null}
 
@@ -858,5 +880,6 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
         )}
       </div>
     </div>
+    </>
   );
 }

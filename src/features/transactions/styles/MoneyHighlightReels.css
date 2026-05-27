@@ -1,0 +1,502 @@
+/* ── Overlay ── */
+.mhr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #07070f;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, 'Inter', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.mhr-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(16px, calc(env(safe-area-inset-top, 0px) + 12px)) 16px 10px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%);
+  pointer-events: none;
+}
+.mhr-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255,255,255,0.65);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.mhr-close-btn {
+  pointer-events: all;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background 0.15s;
+}
+.mhr-close-btn:hover { background: rgba(255,255,255,0.22); }
+
+/* ── Progress dots strip ── */
+.mhr-progress-strip {
+  position: absolute;
+  top: max(58px, calc(env(safe-area-inset-top, 0px) + 54px));
+  left: 16px;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.mhr-progress-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  transition: background 0.25s, transform 0.25s;
+}
+.mhr-progress-dot--active {
+  background: #fff;
+  transform: scale(1.35);
+}
+.mhr-progress-dot--done {
+  background: rgba(255,255,255,0.55);
+}
+
+/* ── Slide counter ── */
+.mhr-counter {
+  position: absolute;
+  top: max(58px, calc(env(safe-area-inset-top, 0px) + 54px));
+  right: 16px;
+  z-index: 21;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.38);
+  pointer-events: none;
+}
+
+/* ── Content ── */
+.mhr-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Slide — full screen, content centered ── */
+.mhr-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;       /* vertical center */
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Glow blob */
+.mhr-glow {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  top: -60px;
+  right: -60px;
+  opacity: 0.14;
+  filter: blur(65px);
+  pointer-events: none;
+  animation: glowPulse 5s ease-in-out infinite alternate;
+}
+@keyframes glowPulse {
+  from { opacity: 0.08; transform: scale(1); }
+  to   { opacity: 0.2;  transform: scale(1.12); }
+}
+
+/* ── Slide inner — centered column with even spacing ── */
+.mhr-slide-inner {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 480px;
+  /* top pad clears the header/dots, bottom pad clears the tap zones */
+  padding: max(90px, calc(env(safe-area-inset-top, 0px) + 86px)) 28px max(80px, calc(env(safe-area-inset-bottom, 0px) + 70px));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  height: 100%;
+  justify-content: center;   /* distribute content in the center of usable space */
+}
+
+/* ── Top row: emoji + badge ── */
+.mhr-slide-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.mhr-emoji {
+  font-size: 46px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35));
+}
+.mhr-type-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 20px;
+}
+
+/* ── Metric hero ── */
+.mhr-metric-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 16px;
+}
+.mhr-metric-number {
+  font-size: clamp(46px, 13vw, 68px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -2.5px;
+  display: block;
+}
+.mhr-metric-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.48);
+  letter-spacing: 0.01em;
+}
+
+/* ── Title ── */
+.mhr-title {
+  margin: 0 0 12px;
+  font-size: clamp(20px, 5vw, 26px);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.25;
+  letter-spacing: -0.4px;
+}
+
+/* ── Divider ── */
+.mhr-divider {
+  height: 2px;
+  width: 36px;
+  border-radius: 2px;
+  margin-bottom: 14px;
+  transform-origin: left;
+}
+
+/* ── Insight ── */
+.mhr-insight {
+  margin: 0 0 18px;
+  font-size: 15.5px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.76);
+}
+
+/* ── Tip box ── */
+.mhr-tip-box {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.mhr-tip-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.mhr-tip-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.88);
+  line-height: 1.45;
+}
+
+/* ── Tap zones (visible arrows) ── */
+.mhr-tap-zone {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  cursor: pointer;
+  pointer-events: all;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.15s;
+}
+.mhr-tap-zone--left  { left: 12px; }
+.mhr-tap-zone--right { right: 12px; }
+.mhr-tap-zone:hover  { background: rgba(255,255,255,0.16); }
+.mhr-tap-arrow {
+  font-size: 22px;
+  color: rgba(255,255,255,0.7);
+  line-height: 1;
+  font-weight: 300;
+  user-select: none;
+}
+
+/* ── Tutorial overlay ── */
+.mhr-tutorial {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.mhr-tutorial-card {
+  width: 100%;
+  max-width: 340px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 24px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.mhr-tutorial-icon {
+  font-size: 44px;
+  margin-bottom: 4px;
+}
+.mhr-tutorial-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+.mhr-tutorial-sub {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.4;
+}
+.mhr-tutorial-steps {
+  display: flex;
+  gap: 12px;
+  margin: 10px 0 4px;
+  width: 100%;
+}
+.mhr-tutorial-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.mhr-tutorial-step-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+.mhr-tutorial-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mhr-tutorial-step-text strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+.mhr-tutorial-step-text span {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+}
+.mhr-tutorial-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #6d28d9, #4f46e5);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 6px 20px -4px rgba(109,40,217,0.5);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.mhr-tutorial-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+.mhr-tutorial-btn:active { transform: translateY(0); }
+
+/* ── Loading ── */
+.mhr-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  height: 100%;
+  background: radial-gradient(ellipse at 40% 40%, rgba(99,102,241,0.16) 0%, transparent 65%), #07070f;
+}
+.mhr-loading-spinner {
+  color: #818cf8;
+  filter: drop-shadow(0 0 18px rgba(129,140,248,0.45));
+}
+.mhr-loading-text {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.82);
+  text-align: center;
+}
+.mhr-loading-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.mhr-step {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.28);
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.05);
+  transition: color 0.3s, background 0.3s;
+}
+.mhr-step--active {
+  color: #818cf8;
+  background: rgba(129,140,248,0.14);
+}
+.mhr-step--done {
+  color: #34d399;
+  background: rgba(52,211,153,0.1);
+}
+.mhr-step-arrow { font-size: 12px; color: rgba(255,255,255,0.18); }
+
+/* ── Error ── */
+.mhr-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  padding: 32px;
+  text-align: center;
+  background: #07070f;
+}
+.mhr-error-emoji { margin: 0; font-size: 44px; }
+.mhr-error-title { margin: 0; font-size: 18px; font-weight: 700; color: #fff; }
+.mhr-error-msg   { margin: 0; font-size: 13px; color: rgba(255,255,255,0.42); max-width: 280px; line-height: 1.5; }
+.mhr-error-btn {
+  margin-top: 8px;
+  padding: 11px 26px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ── Highlight trigger button in Rock AI header ── */
+.txn-chat-highlight-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: none;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 14px -3px rgba(109,40,217,0.5);
+  transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.txn-chat-highlight-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px -3px rgba(109,40,217,0.6);
+}
+.txn-chat-highlight-btn:active { transform: translateY(0); }
+.txn-chat-highlight-btn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.65);
+  animation: dotPulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes dotPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.35); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 390px) {
+  .mhr-slide-inner { padding-left: 20px; padding-right: 20px; }
+  .mhr-metric-number { font-size: 40px; letter-spacing: -1.5px; }
+  .mhr-title { font-size: 18px; }
+  .mhr-insight { font-size: 14.5px; }
+  .mhr-emoji { font-size: 40px; }
+  .mhr-tap-zone { display: none; } /* small screens rely on tapping content area */
+}
+
+@media (min-height: 800px) {
+  .mhr-slide-inner { gap: 4px; }
+  .mhr-slide-top   { margin-bottom: 24px; }
+  .mhr-metric-hero { margin-bottom: 20px; }
+  .mhr-title       { margin-bottom: 16px; }
+  .mhr-divider     { margin-bottom: 16px; }
+  .mhr-insight     { margin-bottom: 22px; }
+}
