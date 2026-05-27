@@ -60,6 +60,7 @@ export type ChatDraftRow = {
 type DraftEdit = Partial<{
   kind: 'expense' | 'income' | 'transfer';
   amount: number | null;
+  amountInput: string;
   dateYmd: string;
   category_id: string;
   resolved_category_label: string;
@@ -549,7 +550,10 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
                     <>
                       {m.drafts!.map((d, i) => {
                         const key = `${m.id}:${i}`;
-                        const display = mergeChatDraft(d, draftEdits[key]);
+                        const edit = draftEdits[key];
+                        const display = mergeChatDraft(d, edit);
+                        const amountInput =
+                          edit?.amountInput ?? (display.amount == null ? '' : String(display.amount));
                         const catOptions =
                           display.kind === 'income'
                             ? props.catsIncome
@@ -588,14 +592,15 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
                                 step="0.01"
                                 placeholder={`Amount (${cur})`}
                                 aria-invalid={display.amount == null || !(display.amount > 0)}
-                                value={display.amount == null ? '' : String(display.amount)}
+                                value={amountInput}
                                 onChange={(e) => {
                                   const v = e.target.value;
-                                  if (v === '') updateDraftEdit(key, { amount: null });
+                                  if (v === '') updateDraftEdit(key, { amount: null, amountInput: '' });
                                   else {
                                     const n = Number(v);
                                     updateDraftEdit(key, {
                                       amount: Number.isFinite(n) && n > 0 ? n : null,
+                                      amountInput: v,
                                     });
                                   }
                                 }}

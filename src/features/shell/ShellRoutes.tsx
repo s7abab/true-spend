@@ -439,15 +439,15 @@ function AddTransactionRoute(props: ShellRoutesProps) {
         console.error('addTransaction failed', res.error);
         props.setToast({ id: Date.now(), kind: 'error', message: msg });
         setTimeout(() => props.setToast(null), 4200);
-        return;
+        return false;
       }
-      navigate(-1);
       props.setToast({
         id: Date.now(),
         kind: t.kind === 'income' ? 'income' : t.kind === 'transfer' ? 'transfer' : 'expense',
         amount: t.amount,
       });
       setTimeout(() => props.setToast(null), 2400);
+      return true;
     } finally {
       setSavingTxn(false);
     }

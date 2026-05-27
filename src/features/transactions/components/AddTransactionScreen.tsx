@@ -83,7 +83,7 @@ type AddTransactionScreenProps = {
   categoriesIncome: CategoryRow[];
   categoriesTransfer: CategoryRow[];
   onClose: () => void;
-  onSave: (t: AddTransactionSavePayload) => void;
+  onSave: (t: AddTransactionSavePayload) => boolean | void | Promise<boolean | void>;
   initialTxn?: MappedTxn | null;
   onDelete?: () => void;
   deleting?: boolean;
@@ -226,9 +226,15 @@ export function AddTransactionScreen({
     if (d) setSelectedDate(d);
   };
 
-  const doSave = () => {
+  const resetNewTransactionForm = () => {
+    setAmount('0');
+    setNote('');
+    setSelectedDate(getToday());
+  };
+
+  const doSave = async () => {
     if (!canSave || !cat || busy) return;
-    onSave({
+    const result = await onSave({
       kind,
       category_id: cat.id,
       amount: numAmount,
@@ -236,6 +242,7 @@ export function AddTransactionScreen({
       note: note.trim() || null,
       occurred_at: selectedDate.toISOString(),
     });
+    if (!isEdit && result !== false) resetNewTransactionForm();
   };
 
   const sheetHandle = !asPage ? <div className="sheet-handle" /> : null;
