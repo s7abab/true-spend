@@ -136,13 +136,24 @@ function BottomNav(props: Pick<ShellRoutesProps, 'canOpenAdd' | 'categoriesLoadi
       if (!(target instanceof HTMLElement)) return false;
       return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
     };
-    const onFocusIn = (e: FocusEvent) => setInputFocused(isInputTarget(e.target));
+    let focusOutTimer: ReturnType<typeof setTimeout>;
+    const onFocusIn = (e: FocusEvent) => {
+      clearTimeout(focusOutTimer);
+      setInputFocused(isInputTarget(e.target));
+    };
     const onFocusOut = () => {
-      window.setTimeout(() => setInputFocused(isInputTarget(document.activeElement)), 0);
+      // 150ms debounce: prevents the nav from jumping when the user taps the
+      // send button (which briefly blurs the textarea before focus returns).
+      clearTimeout(focusOutTimer);
+      focusOutTimer = window.setTimeout(
+        () => setInputFocused(isInputTarget(document.activeElement)),
+        150,
+      );
     };
     document.addEventListener('focusin', onFocusIn);
     document.addEventListener('focusout', onFocusOut);
     return () => {
+      clearTimeout(focusOutTimer);
       document.removeEventListener('focusin', onFocusIn);
       document.removeEventListener('focusout', onFocusOut);
     };

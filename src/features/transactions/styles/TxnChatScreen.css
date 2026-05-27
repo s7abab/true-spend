@@ -907,3 +907,28 @@
     padding-right: max(12px, env(safe-area-inset-right, 0px));
   }
 }
+
+/* ── Agent tool-calling status indicator ────────────────────────────────── */
+.txn-chat-agent-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b6b80;
+  font-style: italic;
+}
+
+.txn-chat-agent-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4f46e5;
+  flex-shrink: 0;
+  animation: agentDotPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes agentDotPulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50%       { opacity: 1;    transform: scale(1.2);  }
+}

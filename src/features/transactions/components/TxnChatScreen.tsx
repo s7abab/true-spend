@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ICalendar, IClose, ISparkle } from '@/shared/components/Icons';
@@ -93,6 +93,8 @@ type ChatTurn = {
   role: 'user' | 'assistant';
   text: string;
   drafts?: ChatDraftRow[];
+  /** Live status shown while agent is calling tools (e.g. "Checking your spending…") */
+  agentStatus?: string;
 };
 
 function pad2(n: number): string {
@@ -283,7 +285,11 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const importBarRef = useRef<TxnChatImportBarHandle>(null);
   const restoreAttempted = useRef(false);
+  const skipNextSendClickRef = useRef(false);
   const [input, setInput] = useState('');
+  const inputRef = useRef('');
+  // Keep ref in sync so send() always reads the latest value without stale closure
+  inputRef.current = input;
   const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [draftEdits, setDraftEdits] = useState<Record<string, DraftEdit>>({});
   const [chatHydrated, setChatHydrated] = useState(false);
@@ -350,70 +356,112 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
   }, [navigate, onTransactionsSaved]);
 
   const send = useCallback(async () => {
-    const text = input.trim();
+    const text = inputRef.current.trim();
     if (!text || sending) return;
-    if (!props.canOpenAdd) {
-      const msg = props.categoriesLoading
-        ? 'Still loading categories…'
-        : props.categoriesError
-          ? 'Fix the data connection, then try again.'
-          : 'Add a category first (Profile → Categories).';
-      props.setToast({ id: Date.now(), kind: 'error', message: msg });
-      setTimeout(() => props.setToast(null), 3200);
-      return;
-    }
     if (!txnAi.ok) {
-      props.setToast({
-        id: Date.now(),
-        kind: 'error',
-        message: txnAi.hint,
-      });
+      props.setToast({ id: Date.now(), kind: 'error', message: txnAi.hint });
       setTimeout(() => props.setToast(null), 5200);
       return;
     }
 
     const userTurn: ChatTurn = { id: `u-${Date.now()}`, role: 'user', text };
-    setMessages((prev) => [...prev, userTurn]);
+    const assistantId = `a-${Date.now()}`;
+
+    // Add user bubble + empty assistant placeholder in one atomic update
+    setMessages((prev) => [
+      ...prev,
+      userTurn,
+      { id: assistantId, role: 'assistant', text: '' },
+    ]);
     setInput('');
     setSending(true);
 
+    const updateBubble = (patch: Partial<ChatTurn>) =>
+      setMessages((prev) => prev.map((m) => m.id === assistantId ? { ...m, ...patch } : m));
+
     try {
-      const prior = formatTxnChatTranscript(
-        messages.map((m) => ({ role: m.role, text: m.text })),
-      );
-      const result = await txnAi.provider.chatTurn({
-        priorTranscript: prior,
+      // Capture prior transcript from the functional updater to avoid stale closure
+      let priorTranscript = '';
+      setMessages((prev) => {
+        priorTranscript = formatTxnChatTranscript(
+          // Exclude the two turns we just added (user + placeholder)
+          prev.slice(0, -2).map((m) => ({ role: m.role, text: m.text })),
+        );
+        return prev; // no-op — just reading state
+      });
+      // Give React a tick to flush before the async call
+      await new Promise(r => setTimeout(r, 0));
+
+      const req = {
+        priorTranscript,
         userMessage: text,
         expenseCategories: props.catsExpense.map((c) => ({ label: c.label })),
         incomeCategories: props.catsIncome.map((c) => ({ label: c.label })),
         transferCategories: props.catsTransfer.map((c) => ({ label: c.label })),
         currency: props.currency,
-      });
+      };
+
+      let result;
+
+      if (txnAi.provider.chatTurnAgent) {
+        result = await txnAi.provider.chatTurnAgent(
+          req,
+          (status: string) => { updateBubble({ agentStatus: status, text: '' }); },
+          (token: string) => {
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== assistantId) return m;
+                return { ...m, agentStatus: undefined, text: m.text + token };
+              }),
+            );
+          },
+        );
+      } else if (txnAi.provider.chatTurnStream) {
+        result = await txnAi.provider.chatTurnStream(req, (token: string) => {
+          setMessages((prev) =>
+            prev.map((m) => m.id === assistantId ? { ...m, text: m.text + token } : m),
+          );
+        });
+      } else {
+        result = await txnAi.provider.chatTurn(req);
+      }
+
       const txsForDrafts = filterTxnChatRowsForDraftUi(result.transactions);
-      const built =
-        txsForDrafts.length > 0
-          ? buildChatDrafts(txsForDrafts, props.catsExpense, props.catsIncome, props.catsTransfer)
-          : undefined;
-      // Show every parsed row so users can fill missing amounts on the same screen as priced lines.
+      const built = txsForDrafts.length > 0
+        ? buildChatDrafts(txsForDrafts, props.catsExpense, props.catsIncome, props.catsTransfer)
+        : undefined;
       const drafts = built && built.length > 0 ? built : undefined;
-      setMessages((prev) => [
-        ...prev,
-        { id: `a-${Date.now()}`, role: 'assistant', text: result.reply, drafts },
-      ]);
+      updateBubble({ text: result.reply, drafts, agentStatus: undefined });
+
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Something went wrong';
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `a-${Date.now()}`,
-          role: 'assistant',
-          text: `Could not reach ${TXN_ASSISTANT_DISPLAY_NAME} (${msg}). Check your API key and network, then try again.`,
-        },
-      ]);
+      updateBubble({
+        text: `Could not reach ${TXN_ASSISTANT_DISPLAY_NAME} (${msg}). Check your API key and network, then try again.`,
+        agentStatus: undefined,
+      });
     } finally {
       setSending(false);
     }
-  }, [txnAi, input, sending, messages, props]);
+  }, [txnAi, sending, props]);
+
+  const handleSendPointerDown = useCallback((e: PointerEvent<HTMLButtonElement>) => {
+    if (e.pointerType === 'mouse') return;
+    e.preventDefault();
+    skipNextSendClickRef.current = true;
+    void send();
+    window.setTimeout(() => {
+      skipNextSendClickRef.current = false;
+    }, 350);
+  }, [send]);
+
+  const handleSendClick = useCallback(() => {
+    if (skipNextSendClickRef.current) {
+      skipNextSendClickRef.current = false;
+      return;
+    }
+    void send();
+  }, [send]);
+
 
   const removeDraftAtTurn = useCallback((turnId: string, draftIndex: number) => {
     if (sending || savingId) return;
@@ -559,7 +607,15 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
             transition={{ duration: 0.22, ease }}
             style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, width: '100%' }}
           >
-            <div className={`txn-chat-bubble txn-chat-bubble--${m.role === 'user' ? 'user' : 'assistant'}`}>{m.text}</div>
+            <div className={`txn-chat-bubble txn-chat-bubble--${m.role === 'user' ? 'user' : 'assistant'}`}>
+              {m.role === 'assistant' && m.agentStatus && !m.text && (
+                <span className="txn-chat-agent-status">
+                  <span className="txn-chat-agent-status-dot" />
+                  {m.agentStatus}
+                </span>
+              )}
+              {m.text}
+            </div>
             {m.role === 'assistant' && m.drafts && m.drafts.length > 0 ? (
               <div className={`txn-chat-draft-wrap${m.drafts.length >= 2 ? ' txn-chat-draft-wrap--multi' : ''}`}>
                 {(() => {
@@ -845,7 +901,9 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
                 type="button"
                 className="txn-chat-send"
                 disabled={sending || !input.trim() || Boolean(savingId) || importBusy}
-                onClick={() => void send()}
+                onMouseDown={(e) => e.preventDefault()}
+                onPointerDown={handleSendPointerDown}
+                onClick={handleSendClick}
               >
                 Send
               </button>
@@ -872,7 +930,9 @@ export function TxnChatScreen(props: TxnChatScreenProps) {
               type="button"
               className="txn-chat-send"
               disabled={sending || !input.trim() || Boolean(savingId) || importBusy}
-              onClick={() => void send()}
+              onMouseDown={(e) => e.preventDefault()}
+              onPointerDown={handleSendPointerDown}
+              onClick={handleSendClick}
             >
               Send
             </button>
