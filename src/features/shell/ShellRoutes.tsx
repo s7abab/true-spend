@@ -136,7 +136,7 @@ function BottomNav(props: Pick<ShellRoutesProps, 'canOpenAdd' | 'categoriesLoadi
       if (!(target instanceof HTMLElement)) return false;
       return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
     };
-    let focusOutTimer: ReturnType<typeof setTimeout>;
+    let focusOutTimer: number | undefined;
     const onFocusIn = (e: FocusEvent) => {
       clearTimeout(focusOutTimer);
       setInputFocused(isInputTarget(e.target));
