@@ -7,6 +7,34 @@ import { generateMoneyHighlights, fetchRealTransactions } from '@/features/trans
 import '@/features/transactions/styles/MoneyHighlightReels.css';
 
 const TUTORIAL_KEY = 'mhr_tutorial_seen';
+const CACHE_KEY_PREFIX = 'mhr_daily_cache';
+
+function todayKey(): string {
+  const d = new Date();
+  return `${CACHE_KEY_PREFIX}_${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function readCache(): MoneyInsightSlide[] | null {
+  try {
+    const raw = localStorage.getItem(todayKey());
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as MoneyInsightSlide[];
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+  } catch { return null; }
+}
+
+function writeCache(slides: MoneyInsightSlide[]): void {
+  try {
+    // Purge any old cache keys from previous days
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE_KEY_PREFIX) && k !== todayKey()) keys.push(k);
+    }
+    keys.forEach((k) => localStorage.removeItem(k));
+    localStorage.setItem(todayKey(), JSON.stringify(slides));
+  } catch { /* storage full or unavailable — skip silently */ }
+}
 
 // ─── Tone config ────────────────────────────────────────────────────────────
 const TONE_CONFIG = {
@@ -262,10 +290,19 @@ export function MoneyHighlightReels({ allCategories, currency, geminiApiKey, onC
     setShowTutorial(false);
   }, []);
 
-  // Fetch + analyze
+  // Fetch + analyze — with daily localStorage cache (1 Gemini call per day)
   useEffect(() => {
     let cancelled = false;
     async function run() {
+      // Check today's cache first — skip Gemini if already generated today
+      const cached = readCache();
+      if (cached) {
+        setSlides(cached);
+        setLoadPhase('done');
+        return;
+      }
+
+      // No cache — fetch transactions + call Gemini
       try {
         setLoadPhase('fetching');
         const txns = await fetchRealTransactions(allCategories);
@@ -273,6 +310,7 @@ export function MoneyHighlightReels({ allCategories, currency, geminiApiKey, onC
         setLoadPhase('analyzing');
         const result = await generateMoneyHighlights({ apiKey: geminiApiKey, transactions: txns, currency });
         if (cancelled) return;
+        writeCache(result.slides); // save for the rest of today
         setSlides(result.slides);
         setLoadPhase('done');
       } catch (err) {
